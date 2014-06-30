@@ -1,0 +1,19 @@
+{
+  "name": "lob-filelibrary",
+  "version": "0.0.0",
+  "description": "functions to help you interact with files",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bsiddiqui/lob-filelibrary.git"
+  },
+  "author": "Basil Siddiqui <basil@lob.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bsiddiqui/lob-filelibrary/issues"
+  },
+  "homepage": "https://github.com/bsiddiqui/lob-filelibrary"
+}
