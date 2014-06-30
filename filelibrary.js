@@ -35,7 +35,8 @@ InvalidRotationDegrees.prototype.constructor = InvalidRotationDegrees;
 * Takes a buffer and returns the relevant metadata
 * @param - {fileStream} - readable file stream
 */
-exports.metaData = function (buffer) {
+exports.getMetaData = function (buffer) {
+
   return new Promise(function (resolve, reject) {
     var fileStream = Streamifier.createReadStream(buffer);
     var identify = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
@@ -144,7 +145,7 @@ exports.merge = function (file1, file2) {
 * Takes a PDF buffer, rotates it clockwise and returns as buffer
 * @param - {buffer} buffer - PDF file buffer
 * @param - {degrees} number - degrees to rotate PDF
- */
+*/
 exports.rotatePdf = function (buffer, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Promise.reject(new InvalidRotationDegrees());
