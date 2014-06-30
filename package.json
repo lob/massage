@@ -2,7 +2,7 @@
   "name": "lob-filelibrary",
   "version": "0.0.0",
   "description": "functions to help you interact with files",
-  "main": "index.js",
+  "main": "./lib/filelibrary",
   "scripts": {
     "test": "mocha"
   },
@@ -10,10 +10,25 @@
     "type": "git",
     "url": "https://github.com/bsiddiqui/lob-filelibrary.git"
   },
+  "keywords": [],
   "author": "Basil Siddiqui <basil@lob.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/bsiddiqui/lob-filelibrary/issues"
   },
-  "homepage": "https://github.com/bsiddiqui/lob-filelibrary"
+  "homepage": "https://github.com/bsiddiqui/lob-filelibrary",
+  "devDependencies": {
+    "gulp": "^3.8.5",
+    "gulp-istanbul": "^0.2.0",
+    "gulp-jscs": "^0.5.0",
+    "gulp-jshint": "^1.6.3",
+    "gulp-load-plugins": "^0.5.3",
+    "gulp-mocha": "^0.4.1",
+    "gulp-util": "^2.2.19",
+    "istanbul": "^0.2.13",
+    "jshint-stylish": "^0.2.0",
+    "yargs": "^1.2.6"
+  },
+  "dependencies": {
+  }
 }
