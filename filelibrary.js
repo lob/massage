@@ -31,6 +31,12 @@ function InvalidRotationDegrees () {
 InvalidRotationDegrees.prototype = Object.create(Error.prototype);
 InvalidRotationDegrees.prototype.constructor = InvalidRotationDegrees;
 
+exports.Errors = {
+  invalidFileUrl: InvalidFileUrl,
+  invalidPdfFile: InvalidPdfFile,
+  invalidRotationDegrees: InvalidRotationDegrees
+};
+
 /**
 * Takes a buffer and returns the relevant metadata
 * @param {Buffer} buffer - readable file stream
