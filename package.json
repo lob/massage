@@ -1,8 +1,8 @@
 {
-  "name": "lob-fileLibrary",
-  "version": "0.0.0",
+  "name": "massage",
+  "version": "0.0.1",
   "description": "functions to help you interact with files",
-  "main": "./fileLibrary.js",
+  "main": "./massage.js",
   "scripts": {
     "test": "gulp testCI",
     "enforce": "gulp enforce",
@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bsiddiqui/lob-filelibrary.git"
+    "url": "https://github.com/lob/massage.git"
   },
   "keywords": [],
   "author": "Basil Siddiqui <basil@lob.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/bsiddiqui/lob-filelibrary/issues"
+    "url": "https://github.com/lob/massage/issues"
   },
-  "homepage": "https://github.com/bsiddiqui/lob-filelibrary",
+  "homepage": "https://github.com/lob/massage",
   "devDependencies": {
     "chai": "^1.9.1",
     "chai-as-promised": "^4.1.1",
