@@ -33,7 +33,7 @@ InvalidRotationDegrees.prototype.constructor = InvalidRotationDegrees;
 
 /**
 * Takes a buffer and returns the relevant metadata
-* @param - {fileStream} - readable file stream
+* @param {Buffer} buffer - readable file stream
 */
 exports.getMetaData = function (buffer) {
 
@@ -62,7 +62,7 @@ exports.getMetaData = function (buffer) {
 
 /**
 * Takes a string/buffer and checks if it is a valid URL
-* @param - {string} url - url to validate
+* @param {String} url - url to validate
 */
 exports.validateUrl = Promise.method(function (url) {
   if (url && !(url instanceof Buffer) && !Url.parse(url).protocol) {
@@ -72,10 +72,9 @@ exports.validateUrl = Promise.method(function (url) {
   }
 });
 
-
 /**
 * Takes either a buffer or a URL and returns a buffer
-* @param - {file} - URL or buffer
+* @param {File} file - URL or buffer
 */
 exports.getBuffer = Promise.method(function (file) {
   if (file instanceof Buffer) {
@@ -104,11 +103,10 @@ exports.getBuffer = Promise.method(function (file) {
   });
 });
 
-
 /**
 * Combine two files into a single a file
-* @param - {file1} - first file to combine
-* @param - {file2} - second file to combine
+* @param {File} file1 - first file to combine
+* @param {File} file2 - second file to combine
 */
 exports.merge = function (file1, file2) {
   var pwrite = Promise.promisify(Fs.writeFile);
@@ -140,11 +138,10 @@ exports.merge = function (file1, file2) {
   });
 };
 
-
 /**
 * Takes a PDF buffer, rotates it clockwise and returns as buffer
-* @param - {buffer} buffer - PDF file buffer
-* @param - {degrees} number - degrees to rotate PDF
+* @param {Buffer} buffer - PDF file buffer
+* @param {number} degrees - degrees to rotate PDF
 */
 exports.rotatePdf = function (buffer, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
@@ -174,4 +171,4 @@ exports.rotatePdf = function (buffer, degrees) {
       });
     });
   });
-}
+};

@@ -4,7 +4,10 @@
   "description": "functions to help you interact with files",
   "main": "./fileLibrary.js",
   "scripts": {
-    "test": "mocha"
+    "test": "gulp testCI",
+    "enforce": "gulp enforce",
+    "lint": "gulp lint",
+    "style": "gulp style"
   },
   "repository": {
     "type": "git",
@@ -31,7 +34,8 @@
     "gulp-util": "^2.2.19",
     "istanbul": "0.2.12",
     "jshint-stylish": "^0.2.0",
-    "mocha": "^1.20.1"
+    "mocha": "^1.20.1",
+    "gulp-clean": "^0.3.1"
   },
   "dependencies": {
     "bluebird": "^2.1.3",
