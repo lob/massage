@@ -27,13 +27,18 @@ gulp.task('lint', function () {
     .pipe(plugins.jshint.reporter('fail'));
 });
 
-gulp.task('test', ['lint', 'style'], function () {
-  gulp.src(paths.testFiles)
-    .pipe(plugins.mocha({reporter: 'spec', timeout: 15000, grep: argv.grep}))
-    .on('error', function (error) {
-        plugins.util.log(plugins.util.colors.red(error.message));
-    })
-    .pipe(plugins.exit());
+gulp.task('enforce', function () {
+  return gulp.src('.')
+    .pipe(plugins.istanbulEnforcer({
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100
+      },
+      coverageDirectory: process.env.COVERAGE_DIR,
+      rootDirectory: ''
+    }));
 });
 
 gulp.task('cover', function () {
@@ -48,7 +53,7 @@ gulp.task('cover', function () {
     .pipe(plugins.istanbul());
 });
 
-gulp.task('testCI', ['lint', 'style', 'cover'], function () {
+gulp.task('test', ['lint', 'style', 'cover'], function () {
   // require('./test/setup');
   if (process.env.NODE_ENV !== 'test') {
     gulp.src(process.env.COVERAGE_DIR + '/coverage')
