@@ -4,7 +4,7 @@ var argv    = require('yargs').argv;
 var stylish = require('jshint-stylish');
 
 var paths = {
-  sourceFiles: 'filelibrary.js',
+  sourceFiles: 'massage.js',
   testFiles: 'test/test.js',
   gulpFile: 'gulpfile.js'
 };
