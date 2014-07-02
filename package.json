@@ -1,6 +1,6 @@
 {
   "name": "massage",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "functions to help you interact with files",
   "main": "./massage.js",
   "scripts": {
@@ -14,7 +14,7 @@
     "url": "https://github.com/lob/massage.git"
   },
   "keywords": [],
-  "author": "Basil Siddiqui <basil@lob.com>",
+  "author": "Lob <support@lob.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/lob/massage/issues"
