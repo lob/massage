@@ -2,6 +2,7 @@ var chai        = require('chai');
 var expect      = chai.expect;
 var Massage = require('../massage');
 var Fs          = require('fs');
+var Promise     = require('bluebird');
 
 chai
 .use(require('chai-as-promised'))
@@ -45,11 +46,16 @@ describe('file library', function () {
     });
 
     it('should fail with non-url', function () {
-      return expect(Massage.validateUrl(__dirname + '/assets/4x6.pdf')).to.be.rejected;
+      var filePath = __dirname + '/assets/4x6.pdf';
+      Fs.readFile(filePath, function (err, buffer) {
+        return expect(Massage.validateUrl(buffer))
+          .to.be.rejected;
+      });
     });
 
     it('should pass with valid url and invalid protocol', function () {
-      return expect(Massage.validateUrl('invalid://www.lob.com')).to.be.rejected;
+      return expect(Massage.validateUrl('invalid://www.lob.com'))
+        .to.be.rejected;
     });
   });
 
@@ -78,6 +84,26 @@ describe('file library', function () {
     it('should throw an error when the url is wrong', function () {
       return expect(Massage.getBuffer('https://www.loasdfas.com'))
         .to.be.rejected;
+    });
+  });
+
+  describe('merge', function () {
+    it('should combine two files', function () {
+      var file1 = Fs.readFileSync(__dirname + '/assets/4x6.pdf');
+      var file2 = Fs.readFileSync(__dirname + '/assets/4x6.pdf');
+
+      return Massage.merge(file1, file2)
+      .then (function (mergedFile) {
+        return Promise.all([
+          Massage.getMetaData(file1),
+          Massage.getMetaData(file2),
+          Massage.getMetaData(mergedFile)
+        ]);
+      })
+      .spread(function (file1, file2, mergedFile) {
+        return expect(file1.numPages + file2.numPages)
+          .to.eql(mergedFile.numPages);
+      });
     });
   });
 
