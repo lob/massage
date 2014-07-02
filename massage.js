@@ -58,6 +58,7 @@ exports.getMetaData = function (buffer) {
       resolve(metaObj);
     });
     identify.stderr.on('data', function (data) {
+      /* istanbul ignore else */
       if (data.toString().substr(0, 8) === 'identify') {
         reject(new InvalidPdfFile());
       }
@@ -71,8 +72,11 @@ exports.getMetaData = function (buffer) {
 * @param {String} url - url to validate
 */
 exports.validateUrl = Promise.method(function (url) {
-  console.log(url);
-  if (url && !(url instanceof Buffer) && Url.parse(url).protocol) {
+  if (
+    !url ||
+    (url instanceof Buffer) ||
+    Url.parse(url).protocol === 'invalid:'
+  ) {
     throw new InvalidFileUrl();
   } else {
     return url;
