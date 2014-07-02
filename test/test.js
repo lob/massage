@@ -1,6 +1,6 @@
 var chai        = require('chai');
 var expect      = chai.expect;
-var FileLibrary = require('../fileLibrary');
+var FileLibrary = require('../massage');
 var Fs          = require('fs');
 
 chai
