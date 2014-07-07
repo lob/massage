@@ -59,6 +59,7 @@ exports.getMetaData = function (buffer) {
     });
     identify.stderr.on('data', function (data) {
       /* istanbul ignore else */
+      // check if there are error messages
       if (data.toString().substr(0, 8) === 'identify') {
         reject(new InvalidPdfFile());
       }
