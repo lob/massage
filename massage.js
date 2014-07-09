@@ -142,8 +142,8 @@ exports.getBuffer = Promise.method(function (file) {
 
 /**
 * Combine two files into a single a file
-* @param {File} file1 - first file to combine
-* @param {File} file3 - second file to combine
+* @param {Buffer} buffer1 - first file to combine
+* @param {Buffer} buffer2 - second file to combine
 */
 exports.merge = function (buffer1, buffer2) {
   var timestamp      = hashTime().slice(0, 10);
@@ -151,8 +151,8 @@ exports.merge = function (buffer1, buffer2) {
   var file2Path      = '/tmp/merge_' + timestamp + '_in2';
   var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
   return Promise.all([
-    pwrite(file1Path, file1),
-    pwrite(file2Path, file2)
+    pwrite(file1Path, buffer1),
+    pwrite(file2Path, buffer2)
   ])
   .then(function () {
     var cmd = 'pdftk ' + file1Path + ' ' + file2Path +
@@ -256,7 +256,7 @@ exports.generateThumbnail = function (pdf) {
   })
   .finally(function () {
     return Promise.all([
-      //punlink(outPath),
+      punlink(outPath),
       punlink(filePath)
     ]);
   });
