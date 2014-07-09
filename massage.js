@@ -8,6 +8,7 @@ var Fs          = require('fs');
 var sha1        = require('sha1');
 var glob        = require('glob');
 
+/* Promisify core API methods */
 var pwrite  = Promise.promisify(Fs.writeFile);
 var pread   = Promise.promisify(Fs.readFile);
 var punlink = Promise.promisify(Fs.unlink);
@@ -50,7 +51,7 @@ exports.Errors = {
   */
 function hashTime () {
   return sha1(Date.now().toString());
-};
+}
 
 /**
   * Returns a hash of the time+a buffer
@@ -69,7 +70,7 @@ exports.getMetaData = function (buffer) {
 
   return new Promise(function (resolve, reject) {
     var fileStream = Streamifier.createReadStream(buffer);
-    var identify = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
+    var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
       '-']);
     identify.stdout.on('data', function (data) {
       var meta = data.toString().split(',');
@@ -144,10 +145,10 @@ exports.getBuffer = Promise.method(function (file) {
 * @param {File} file1 - first file to combine
 * @param {File} file3 - second file to combine
 */
-exports.merge = function (file1, file2) {
-  var timestamp = hashTime().slice(0, 10);
-  var file1Path = '/tmp/merge_' + timestamp + '_in1';
-  var file2Path = '/tmp/merge_' + timestamp + '_in2';
+exports.merge = function (buffer1, buffer2) {
+  var timestamp      = hashTime().slice(0, 10);
+  var file1Path      = '/tmp/merge_' + timestamp + '_in1';
+  var file2Path      = '/tmp/merge_' + timestamp + '_in2';
   var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
   return Promise.all([
     pwrite(file1Path, file1),
@@ -179,9 +180,9 @@ exports.rotatePdf = function (buffer, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Promise.reject(new InvalidRotationDegrees());
   }
-  var pdfHash = hashBuffer(buffer).slice(0, 10);
+  var pdfHash  = hashBuffer(buffer).slice(0, 10);
   var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
-  var outPath = '/tmp/rotate_' + pdfHash + '_out.pdf';
+  var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
 
   return pwrite(filePath, buffer)
   .then(function () {
@@ -240,13 +241,13 @@ exports.burstPdf = function (pdf) {
   * @param {Buffer} pdf PDF file buffer
   */
 exports.generateThumbnail = function (pdf) {
-  var pdfHash = hashBuffer(pdf).slice(0, 10);
+  var pdfHash  = hashBuffer(pdf).slice(0, 10);
   var filePath = '/tmp/thumb_' + pdfHash + '_in.pdf';
-  var outPath = '/tmp/thumb_' + pdfHash + '_out.png';
+  var outPath  = '/tmp/thumb_' + pdfHash + '_out.png';
 
   return pwrite(filePath, pdf)
   .then(function () {
-    var cmd = 'convert -density 300x300 -resize 200x300 ' +
+    var cmd = 'convert -density 300x300 -resize 20% ' +
       filePath + ' ' + outPath;
     return pexec(cmd);
   })
