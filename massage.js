@@ -239,15 +239,16 @@ exports.burstPdf = function (pdf) {
   * Returns a buffer of a PNG of the thumbnail.
   * @author - Grayson Chao
   * @param {Buffer} pdf PDF file buffer
+  * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
   */
-exports.generateThumbnail = function (pdf) {
+exports.generateThumbnail = function (pdf, size) {
   var pdfHash  = hashBuffer(pdf).slice(0, 10);
   var filePath = '/tmp/thumb_' + pdfHash + '_in.pdf';
   var outPath  = '/tmp/thumb_' + pdfHash + '_out.png';
 
   return pwrite(filePath, pdf)
   .then(function () {
-    var cmd = 'convert -density 300x300 -resize 20% ' + 
+    var cmd = 'convert -density 300x300 -resize ' + size + '% ' +
       filePath + ' ' + outPath;
     return pexec(cmd);
   })

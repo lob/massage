@@ -145,7 +145,7 @@ describe('file library', function () {
     it('should generate a pdf with valid input', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
       var testFile = Fs.readFileSync(filePath);
-      return Massage.generateThumbnail(testFile)
+      return Massage.generateThumbnail(testFile, '200x300')
       .then(function (thumb) {
         expect(Massage.getMetaData(thumb)).to.eventually.eql(
           {fileType: 'PNG', width: 200, length: 300, numPages: 1}
