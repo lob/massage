@@ -124,6 +124,7 @@ exports.merge = function (file1, file2) {
   var pwrite = Promise.promisify(Fs.writeFile);
   var pexec = Promise.promisify(exec);
   var punlink = Promise.promisify(Fs.unlink);
+  var pread = Promise.promisify(Fs.readFile);
   var file1Path = '/tmp/1' + sha1(Date.now().toString()).slice(0, 10);
   var file2Path = '/tmp/2' + sha1(Date.now().toString()).slice(0, 10);
   var mergedFilePath = '/tmp/3' + sha1(Date.now().toString()).slice(0, 10);
@@ -136,17 +137,15 @@ exports.merge = function (file1, file2) {
       ' cat output ' + mergedFilePath;
     return pexec(cmd);
   })
-  .bind({})
   .then(function () {
-    this.mergedFile = Fs.readFileSync(mergedFilePath);
+    return pread(mergedFilePath);
+  })
+  .finally(function () {
     return Promise.all([
       punlink(file1Path),
       punlink(file2Path),
       punlink(mergedFilePath)
     ]);
-  })
-  .then(function () {
-    return this.mergedFile;
   });
 };
 
@@ -162,6 +161,7 @@ exports.rotatePdf = function (buffer, degrees) {
   var pwrite = Promise.promisify(Fs.writeFile);
   var pexec = Promise.promisify(exec);
   var punlink = Promise.promisify(Fs.unlink);
+  var pread = Promise.promisify(Fs.readFile);
   var filePath = '/tmp/' + sha1(Date.now().toString() +
       buffer.toString().slice(0,100)).slice(0,10) + '.pdf';
   var outPath = '/tmp/' + sha1(Date.now().toString() +
@@ -173,16 +173,13 @@ exports.rotatePdf = function (buffer, degrees) {
     filePath + ' ' + outPath;
     return pexec(cmd);
   })
-  .bind({})
   .then(function () {
-    this.outFile = Fs.readFileSync(outPath);
-
+    return pread(outPath);
+  })
+  .finally(function () {
     return Promise.all([
       punlink(filePath),
       punlink(outPath)
     ]);
-  })
-  .then(function () {
-    return this.outFile;
   });
 };
