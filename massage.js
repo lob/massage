@@ -125,9 +125,9 @@ exports.merge = function (file1, file2) {
   var pwrite = Promise.promisify(Fs.writeFile);
   var pexec = Promise.promisify(exec);
   var punlink = Promise.promisify(Fs.unlink);
-  var file1Path = '/tmp/1' + sha1(Date.now().toString()).slice(0, 10);
-  var file2Path = '/tmp/2' + sha1(Date.now().toString()).slice(0, 10);
-  var mergedFilePath = '/tmp/3' + sha1(Date.now().toString()).slice(0, 10);
+  var file1Path = '/tmp/merge1' + sha1(Date.now().toString()).slice(0, 10);
+  var file2Path = '/tmp/merge2' + sha1(Date.now().toString()).slice(0, 10);
+  var mergedFilePath = '/tmp/merge3' + sha1(Date.now().toString()).slice(0, 10);
   return Promise.all([
     pwrite(file1Path, file1),
     pwrite(file2Path, file2)
@@ -163,10 +163,10 @@ exports.rotatePdf = function (buffer, degrees) {
   var pwrite = Promise.promisify(Fs.writeFile);
   var pexec = Promise.promisify(exec);
   var punlink = Promise.promisify(Fs.unlink);
-  var filePath = '/tmp/' + sha1(Date.now().toString() +
-      buffer.toString().slice(0,100)).slice(0,10) + '.pdf';
-  var outPath = '/tmp/' + sha1(Date.now().toString() +
-      buffer.toString().slice(100,200)).slice(0,10) + '.pdf';
+  var filePath = '/tmp/rotate_' + sha1(Date.now().toString() +
+      buffer.toString().slice(0,100)).slice(0,10) + '_in.pdf';
+  var outPath = '/tmp/rotate_' + sha1(Date.now().toString() +
+      buffer.toString().slice(100,200)).slice(0,10) + '_out.pdf';
 
   return pwrite(filePath, buffer)
   .then(function () {
@@ -213,7 +213,7 @@ exports.burstPdf = function (pdf) {
   })
   .bind({})
   .tap(function (filenames) {
-    this.outFiles = filenames;
+    this.outFiles = filenames.concat(filePath);
   })
   .map(function (filename) {
     return pread(filename);
@@ -223,8 +223,8 @@ exports.burstPdf = function (pdf) {
   })
   .finally(function () {
     return Promise.resolve(this.outFiles)
-    .each(function (file) {
-      return punlink(file);
+    .each(function (filename) {
+      return punlink(filename);
     });
   });
 };
@@ -254,6 +254,12 @@ exports.generateThumbnail = function (pdf) {
   })
   .bind({})
   .then(function () {
-    return pread(outPath);
+    return pread(outPath); // actual return value when resolved
   })
+  .finally(function () {
+    return Promise.all([
+      punlink(outPath),
+      punlink(filePath)
+    ]);
+  });
 };
