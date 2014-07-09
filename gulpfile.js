@@ -53,6 +53,11 @@ gulp.task('cover', function () {
     .pipe(plugins.istanbul());
 });
 
+gulp.task('coveralls', function () {
+  gulp.src('coverage/**/lcov.info')
+    .pipe(plugins.coveralls());
+});
+
 gulp.task('test', ['lint', 'style', 'cover'], function () {
   // require('./test/setup');
   if (process.env.NODE_ENV !== 'test') {
