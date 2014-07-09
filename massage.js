@@ -6,6 +6,7 @@ var Streamifier = require('streamifier');
 var Url         = require('url');
 var Fs          = require('fs');
 var sha1        = require('sha1');
+var glob        = require('glob');
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -118,7 +119,7 @@ exports.getBuffer = Promise.method(function (file) {
 /**
 * Combine two files into a single a file
 * @param {File} file1 - first file to combine
-* @param {File} file2 - second file to combine
+* @param {File} file3 - second file to combine
 */
 exports.merge = function (file1, file2) {
   var pwrite = Promise.promisify(Fs.writeFile);
@@ -185,4 +186,74 @@ exports.rotatePdf = function (buffer, degrees) {
   .then(function () {
     return this.outFile;
   });
+};
+
+/**
+  * Takes a multipage pdf buffer and returns an array of 1-page pdf buffers
+  * @author - Grayson Chao
+  * @param {Buffer} pdf PDF file buffer
+  */
+exports.burstPdf = function (pdf) {
+  var pwrite = Promise.promisify(Fs.writeFile);
+  var pexec = Promise.promisify(exec);
+  var punlink = Promise.promisify(Fs.unlink);
+  var pread = Promise.promisify(Fs.readFile);
+  var pglob = Promise.promisify(glob);
+  var hash = function () {
+    return sha1(Date.now().toString());
+  };
+  var filePath = '/tmp/split_' + hash().slice(0, 10);
+  return pwrite(filePath, pdf)
+  .then(function () {
+    var cmd = 'pdftk ' + filePath + ' burst output ' + filePath + '_page_%03d';
+    return pexec(cmd);
+  })
+  .then(function () {
+    return pglob(filePath + '_page_*');
+  })
+  .bind({})
+  .tap(function (filenames) {
+    this.outFiles = filenames;
+  })
+  .map(function (filename) {
+    return pread(filename);
+  })
+  .then(function (files) {
+    return files; // actual return value when resolved
+  })
+  .finally(function () {
+    return Promise.resolve(this.outFiles)
+    .each(function (file) {
+      return punlink(file);
+    });
+  });
+};
+
+/**
+  * Takes a pdf and resizes it to thumbnail size.
+  * Returns a buffer of a PNG of the thumbnail.
+  * @author - Grayson Chao
+  * @param {Buffer} pdf PDF file buffer
+  */
+exports.generateThumbnail = function (pdf) {
+  var pwrite  = Promise.promisify(Fs.writeFile);
+  var pexec   = Promise.promisify(exec);
+  var punlink = Promise.promisify(Fs.unlink);
+  var pread   = Promise.promisify(Fs.readFile);
+
+  var filePath = '/tmp/' + sha1(Date.now().toString() +
+      pdf.toString().slice(0,100)).slice(0,10) + '.pdf';
+  var outPath = '/tmp/' + sha1(Date.now().toString() +
+      pdf.toString().slice(100,200)).slice(0,10) + '.png';
+
+  return pwrite(filePath, pdf)
+  .then(function () {
+    var cmd = 'convert -density 300x300 -resize 200x300 ' +
+      filePath + ' ' + outPath;
+    return pexec(cmd);
+  })
+  .bind({})
+  .then(function () {
+    return pread(outPath);
+  })
 };

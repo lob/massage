@@ -129,4 +129,28 @@ describe('file library', function () {
       return expect(Massage.rotatePdf(testFile, 33)).to.be.rejected;
     });
   });
+
+  describe('burstPdf', function () {
+    it('should burst a pdf into pages', function () {
+      var filePath = __dirname + '/assets/4x6_twice.pdf';
+      var testFile = Fs.readFileSync(filePath);
+      return Massage.burstPdf(testFile)
+      .then(function (files) {
+        return expect(files).to.have.length(2);
+      });
+    });
+  });
+
+  describe('generateThumbnail', function () {
+    it('should generate a pdf with valid input', function () {
+      var filePath = __dirname + '/assets/4x6.pdf';
+      var testFile = Fs.readFileSync(filePath);
+      return Massage.generateThumbnail(testFile)
+      .then(function (thumb) {
+        expect(Massage.getMetaData(thumb)).to.eventually.eql(
+          {fileType: 'PNG', width: 200, length: 300, numPages: 1}
+        );
+      });
+    });
+  });
 });
