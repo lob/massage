@@ -247,7 +247,7 @@ exports.generateThumbnail = function (pdf) {
 
   return pwrite(filePath, pdf)
   .then(function () {
-    var cmd = 'convert -density 300x300 -resize 20% ' +
+    var cmd = 'convert -density 300x300 -resize 20% ' + 
       filePath + ' ' + outPath;
     return pexec(cmd);
   })
@@ -256,7 +256,7 @@ exports.generateThumbnail = function (pdf) {
   })
   .finally(function () {
     return Promise.all([
-      punlink(outPath),
+      //punlink(outPath),
       punlink(filePath)
     ]);
   });
