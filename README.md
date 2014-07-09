@@ -1,6 +1,6 @@
 # Massage
 
-[![NPM version][npm-image]][npm-url] [![Downloads][downloads-image]][npm-url]  [![Build Status](https://travis-ci.org/lob/massage.svg?branch=master)](https://travis-ci.org/lob/massage) [![Dependency Status](https://gemnasium.com/lob/massage.svg)](https://gemnasium.com/lob/massage) [![Coverage Status](https://img.shields.io/coveralls/lob/massage.svg)](https://coveralls.io/r/lob/massage)
+[![NPM version][npm-image]][npm-url] [![Downloads][downloads-image]][npm-url]  [![Build Status](https://travis-ci.org/lob/massage.svg?branch=master)](https://travis-ci.org/lob/massage) [![Dependency Status](https://gemnasium.com/lob/massage.svg)](https://gemnasium.com/lob/massage) [![Coverage Status](https://img.shields.io/coveralls/lob/massage.svg)](https://coveralls.io/r/lob/massage?branch=master)
 
 [downloads-image]: http://img.shields.io/npm/dm/lob.svg
 [npm-url]: https://npmjs.org/package/lob
