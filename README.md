@@ -9,3 +9,12 @@
 [travis-image]: https://travis-ci.org/lob/massage.svg?branch=master
 [depstat-url]: https://david-dm.org/Lob/massage
 [depstat-image]: https://david-dm.org/Lob/massage.svg
+
+## Dependencies
+###ImageMagick and GhostScript
+```bash
+  brew install imagemagick ghostscript
+```
+
+###PDFtk
+Go to http://www.pdflabs.com/tools/pdftk-server/ for official installation of PDFtk
