@@ -1,8 +1,8 @@
-var chai        = require('chai');
-var expect      = chai.expect;
+var chai    = require('chai');
+var expect  = chai.expect;
 var Massage = require('../massage');
-var Fs          = require('fs');
-var Promise     = require('bluebird');
+var Fs      = require('fs');
+var Promise = require('bluebird');
 
 chai
 .use(require('chai-as-promised'))

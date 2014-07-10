@@ -7,6 +7,7 @@ var Url         = require('url');
 var Fs          = require('fs');
 var sha1        = require('sha1');
 var glob        = require('glob');
+var _           = require('lodash');
 
 /* Promisify core API methods */
 var pwrite  = Promise.promisify(Fs.writeFile);
@@ -76,9 +77,9 @@ exports.getMetaData = function (buffer) {
       var meta = data.toString().split(',');
       var metaObj = {
         fileType: meta[0],
-      width: parseFloat(meta[1]),
-      length: parseFloat(meta[2]),
-      numPages: parseFloat(meta[3])
+        width: parseFloat(meta[1]),
+        length: parseFloat(meta[2]),
+        numPages: parseFloat(meta[3])
       };
       resolve(metaObj);
     });
@@ -203,6 +204,7 @@ exports.rotatePdf = function (buffer, degrees) {
 
 /**
   * Takes a multipage pdf buffer and returns an array of 1-page pdf buffers
+  * (Sorted by page number)
   * @author - Grayson Chao
   * @param {Buffer} pdf PDF file buffer
   */
@@ -214,17 +216,25 @@ exports.burstPdf = function (pdf) {
     return pexec(cmd);
   })
   .then(function () {
-    return pglob(filePath + '_page_*');
+    return pglob(filePath + '_page_*')
+    .then(function (filenames) {
+      return _.sortBy(filenames, function (filename) {
+        return parseInt(filename.slice(filename.length - 3));
+      });
+    });
   })
   .bind({})
   .tap(function (filenames) {
     this.outFiles = filenames.concat(filePath);
   })
   .map(function (filename) {
-    return pread(filename);
-  })
-  .then(function (files) {
-    return files; // actual return value when resolved
+    return pread(filename)
+    .then(function (page) {
+      return {
+        page: parseInt(filename.slice(filename.length - 3)),
+        file: page
+      };
+    });
   })
   .finally(function () {
     return Promise.resolve(this.outFiles)
@@ -248,7 +258,7 @@ exports.generateThumbnail = function (pdf, size) {
 
   return pwrite(filePath, pdf)
   .then(function () {
-    var cmd = 'convert -density 300x300 -resize ' + size + '% ' +
+    var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
       filePath + ' ' + outPath;
     return pexec(cmd);
   })
