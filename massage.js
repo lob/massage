@@ -50,18 +50,18 @@ exports.Errors = {
   * Returns a simple sha1 hash of the time
   * @author - Grayson Chao
   */
-function hashTime () {
+var hashTime = function () {
   return sha1(Date.now().toString());
-}
+};
 
 /**
   * Returns a hash of the time+a buffer
   * @author - Grayson Chao
   * @param {Buffer} buffer
   */
-function hashBuffer (buffer) {
+var hashBuffer = function (buffer) {
   return sha1(Date.now().toString() + buffer.toString().slice(0,100));
-}
+};
 
 /**
 * Takes a buffer and returns the relevant metadata
