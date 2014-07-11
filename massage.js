@@ -6,6 +6,15 @@ var Streamifier = require('streamifier');
 var Url         = require('url');
 var Fs          = require('fs');
 var sha1        = require('sha1');
+var glob        = require('glob');
+var _           = require('lodash');
+
+/* Promisify core API methods */
+var pwrite  = Promise.promisify(Fs.writeFile);
+var pread   = Promise.promisify(Fs.readFile);
+var punlink = Promise.promisify(Fs.unlink);
+var pexec   = Promise.promisify(exec);
+var pglob   = Promise.promisify(glob);
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -38,6 +47,23 @@ exports.Errors = {
 };
 
 /**
+  * Returns a simple sha1 hash of the time
+  * @author - Grayson Chao
+  */
+function hashTime () {
+  return sha1(Date.now().toString());
+}
+
+/**
+  * Returns a hash of the time+a buffer
+  * @author - Grayson Chao
+  * @param {Buffer} buffer
+  */
+function hashBuffer (buffer) {
+  return sha1(Date.now().toString() + buffer.toString().slice(0,100));
+}
+
+/**
 * Takes a buffer and returns the relevant metadata
 * @param {Buffer} buffer - readable file stream
 */
@@ -45,15 +71,15 @@ exports.getMetaData = function (buffer) {
 
   return new Promise(function (resolve, reject) {
     var fileStream = Streamifier.createReadStream(buffer);
-    var identify = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
+    var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
       '-']);
     identify.stdout.on('data', function (data) {
       var meta = data.toString().split(',');
       var metaObj = {
         fileType: meta[0],
-      width: parseFloat(meta[1]),
-      length: parseFloat(meta[2]),
-      numPages: parseFloat(meta[3])
+        width: parseFloat(meta[1]),
+        length: parseFloat(meta[2]),
+        numPages: parseFloat(meta[3])
       };
       resolve(metaObj);
     });
@@ -117,36 +143,32 @@ exports.getBuffer = Promise.method(function (file) {
 
 /**
 * Combine two files into a single a file
-* @param {File} file1 - first file to combine
-* @param {File} file2 - second file to combine
+* @param {Buffer} buffer1 - first file to combine
+* @param {Buffer} buffer2 - second file to combine
 */
-exports.merge = function (file1, file2) {
-  var pwrite = Promise.promisify(Fs.writeFile);
-  var pexec = Promise.promisify(exec);
-  var punlink = Promise.promisify(Fs.unlink);
-  var file1Path = '/tmp/1' + sha1(Date.now().toString()).slice(0, 10);
-  var file2Path = '/tmp/2' + sha1(Date.now().toString()).slice(0, 10);
-  var mergedFilePath = '/tmp/3' + sha1(Date.now().toString()).slice(0, 10);
+exports.merge = function (buffer1, buffer2) {
+  var timestamp      = hashTime().slice(0, 10);
+  var file1Path      = '/tmp/merge_' + timestamp + '_in1';
+  var file2Path      = '/tmp/merge_' + timestamp + '_in2';
+  var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
   return Promise.all([
-    pwrite(file1Path, file1),
-    pwrite(file2Path, file2)
+    pwrite(file1Path, buffer1),
+    pwrite(file2Path, buffer2)
   ])
   .then(function () {
     var cmd = 'pdftk ' + file1Path + ' ' + file2Path +
       ' cat output ' + mergedFilePath;
     return pexec(cmd);
   })
-  .bind({})
   .then(function () {
-    this.mergedFile = Fs.readFileSync(mergedFilePath);
+    return pread(mergedFilePath);
+  })
+  .finally(function () {
     return Promise.all([
       punlink(file1Path),
       punlink(file2Path),
       punlink(mergedFilePath)
     ]);
-  })
-  .then(function () {
-    return this.mergedFile;
   });
 };
 
@@ -159,13 +181,9 @@ exports.rotatePdf = function (buffer, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Promise.reject(new InvalidRotationDegrees());
   }
-  var pwrite = Promise.promisify(Fs.writeFile);
-  var pexec = Promise.promisify(exec);
-  var punlink = Promise.promisify(Fs.unlink);
-  var filePath = '/tmp/' + sha1(Date.now().toString() +
-      buffer.toString().slice(0,100)).slice(0,10) + '.pdf';
-  var outPath = '/tmp/' + sha1(Date.now().toString() +
-      buffer.toString().slice(100,200)).slice(0,10) + '.pdf';
+  var pdfHash  = hashBuffer(buffer).slice(0, 10);
+  var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
+  var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
 
   return pwrite(filePath, buffer)
   .then(function () {
@@ -173,16 +191,84 @@ exports.rotatePdf = function (buffer, degrees) {
     filePath + ' ' + outPath;
     return pexec(cmd);
   })
-  .bind({})
   .then(function () {
-    this.outFile = Fs.readFileSync(outPath);
-
+    return pread(outPath);
+  })
+  .finally(function () {
     return Promise.all([
       punlink(filePath),
       punlink(outPath)
     ]);
+  });
+};
+
+/**
+  * Takes a multipage pdf buffer and returns an array of 1-page pdf buffers
+  * (Sorted by page number)
+  * @author - Grayson Chao
+  * @param {Buffer} pdf PDF file buffer
+  */
+exports.burstPdf = function (pdf) {
+  var filePath = '/tmp/burst_' + hashTime().slice(0, 10);
+  return pwrite(filePath, pdf)
+  .then(function () {
+    var cmd = 'pdftk ' + filePath + ' burst output ' + filePath + '_page_%03d';
+    return pexec(cmd);
   })
   .then(function () {
-    return this.outFile;
+    return pglob(filePath + '_page_*')
+    .then(function (filenames) {
+      return _.sortBy(filenames, function (filename) {
+        return parseInt(filename.slice(filename.length - 3));
+      });
+    });
+  })
+  .bind({})
+  .tap(function (filenames) {
+    this.outFiles = filenames.concat(filePath);
+  })
+  .map(function (filename) {
+    return pread(filename)
+    .then(function (page) {
+      return {
+        page: parseInt(filename.slice(filename.length - 3)),
+        file: page
+      };
+    });
+  })
+  .finally(function () {
+    return Promise.resolve(this.outFiles)
+    .each(function (filename) {
+      return punlink(filename);
+    });
+  });
+};
+
+/**
+  * Takes a pdf and resizes it to thumbnail size.
+  * Returns a buffer of a PNG of the thumbnail.
+  * @author - Grayson Chao
+  * @param {Buffer} pdf PDF file buffer
+  * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
+  */
+exports.generateThumbnail = function (pdf, size) {
+  var pdfHash  = hashBuffer(pdf).slice(0, 10);
+  var filePath = '/tmp/thumb_' + pdfHash + '_in.pdf';
+  var outPath  = '/tmp/thumb_' + pdfHash + '_out.png';
+
+  return pwrite(filePath, pdf)
+  .then(function () {
+    var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
+      filePath + ' ' + outPath;
+    return pexec(cmd);
+  })
+  .then(function () {
+    return pread(outPath); // actual return value when resolved
+  })
+  .finally(function () {
+    return Promise.all([
+      punlink(outPath),
+      punlink(filePath)
+    ]);
   });
 };
