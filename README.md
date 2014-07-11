@@ -2,9 +2,9 @@
 
 [![NPM version][npm-image]][npm-url] [![Downloads][downloads-image]][npm-url]  [![Build Status](https://travis-ci.org/lob/massage.svg?branch=master)](https://travis-ci.org/lob/massage) [![Dependency Status](https://gemnasium.com/lob/massage.svg)](https://gemnasium.com/lob/massage) [![Coverage Status](https://img.shields.io/coveralls/lob/massage.svg)](https://coveralls.io/r/lob/massage?branch=master)
 
-[downloads-image]: http://img.shields.io/npm/dm/lob.svg
-[npm-url]: https://npmjs.org/package/lob
-[npm-image]: https://badge.fury.io/js/lob.svg
+[downloads-image]: http://img.shields.io/npm/dm/massage.svg
+[npm-url]: https://npmjs.org/package/massage
+[npm-image]: https://badge.fury.io/js/massage.svg
 [travis-url]: https://travis-ci.org/lob/massage
 [travis-image]: https://travis-ci.org/lob/massage.svg?branch=master
 [depstat-url]: https://david-dm.org/Lob/massage
@@ -24,14 +24,14 @@ Go to http://www.pdflabs.com/tools/pdftk-server/ for official installation of PD
 #####`getMetaData( [Buffer image] )` -> `Object`
 
 Returns an object with metadata about the buffer, as told by ImageMagick.
-`
+```
 {
-  fileType: 'pdf|png|jpg|etc...' (String)
-  width: document width in inches (Number)
-  length: document length in inches (Number)
-  numPages: number of images in the image sequence (number of pages in the PDF)
+  fileType: 'pdf|png|jpg|etc...' [String]
+  width: document width in inches [Number]
+  length: document length in inches [Number]
+  numPages: number of images in the image sequence (number of pages in the PDF) [Number]
 }
-`
+```
 
 #####`validateUrl( [String url] )` -> `String`
 
