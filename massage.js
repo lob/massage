@@ -8,6 +8,7 @@ var Fs          = require('fs');
 var sha1        = require('sha1');
 var glob        = require('glob');
 var _           = require('lodash');
+var uuid        = require('uuid');
 
 /* Promisify core API methods */
 var pwrite  = Promise.promisify(Fs.writeFile);
@@ -46,21 +47,11 @@ exports.Errors = {
   invalidRotationDegrees: InvalidRotationDegrees
 };
 
-/**
-  * Returns a simple sha1 hash of the time
-  * @author - Grayson Chao
-  */
-var hashTime = function () {
-  return sha1(Date.now().toString());
-};
-
-/**
-  * Returns a hash of the time+a buffer
-  * @author - Grayson Chao
-  * @param {Buffer} buffer
-  */
-var hashBuffer = function (buffer) {
-  return sha1(Date.now().toString() + buffer.toString().slice(0,100));
+/** Return a 16-character unique identifier.
+ * @author - Grayson Chao
+ */
+var getUUID = function () {
+  return sha1(uuid.v4().toString()).slice(0, 15);
 };
 
 /**
@@ -147,7 +138,7 @@ exports.getBuffer = Promise.method(function (file) {
 * @param {Buffer} buffer2 - second file to combine
 */
 exports.merge = function (buffer1, buffer2) {
-  var timestamp      = hashTime().slice(0, 10);
+  var timestamp      = getUUID().slice(0, 10);
   var file1Path      = '/tmp/merge_' + timestamp + '_in1';
   var file2Path      = '/tmp/merge_' + timestamp + '_in2';
   var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
@@ -181,7 +172,7 @@ exports.rotatePdf = function (buffer, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Promise.reject(new InvalidRotationDegrees());
   }
-  var pdfHash  = hashBuffer(buffer).slice(0, 10);
+  var pdfHash  = getUUID() + sha1(buffer).slice(0, 10);
   var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
   var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
 
@@ -209,7 +200,7 @@ exports.rotatePdf = function (buffer, degrees) {
   * @param {Buffer} pdf PDF file buffer
   */
 exports.burstPdf = function (pdf) {
-  var filePath = '/tmp/burst_' + hashTime().slice(0, 10);
+  var filePath = '/tmp/burst_' + getUUID().slice(0, 10);
   return pwrite(filePath, pdf)
   .then(function () {
     var cmd = 'pdftk ' + filePath + ' burst output ' + filePath + '_page_%03d';
@@ -252,7 +243,7 @@ exports.burstPdf = function (pdf) {
   * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
   */
 exports.generateThumbnail = function (pdf, size) {
-  var pdfHash  = hashBuffer(pdf).slice(0, 10);
+  var pdfHash  = getUUID() + sha1(pdf).toString().slice(0, 10);
   var filePath = '/tmp/thumb_' + pdfHash + '_in.pdf';
   var outPath  = '/tmp/thumb_' + pdfHash + '_out.png';
 
