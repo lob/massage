@@ -90,11 +90,7 @@ exports.getMetaData = function (buffer) {
 * @param {String} url - url to validate
 */
 exports.validateUrl = Promise.method(function (url) {
-  if (
-    !url ||
-    (url instanceof Buffer) ||
-    Url.parse(url).protocol === 'invalid:'
-  ) {
+  if (!url || (typeof url) !== 'string' || !Url.parse(url).protocol) {
     throw new InvalidFileUrl();
   } else {
     return url;
