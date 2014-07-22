@@ -32,17 +32,8 @@ describe('file library', function () {
 
   describe('validateUrl', function () {
     it('should pass with valid url and protocol', function () {
-      Massage.validateUrl('https://www.lob.com')
-      .then(function (res) {
-        return expect(res).to.eql('https://www.lob.com');
-      });
-    });
-
-    it('should pass with valid url and no protocol', function () {
-      Massage.validateUrl('www.lob.com')
-      .then(function (res) {
-        return expect(res).to.eql('www.lob.com');
-      });
+      return expect(Massage.validateUrl('https://www.lob.com'))
+        .to.be.fulfilled;
     });
 
     it('should fail with non-url', function () {
@@ -53,8 +44,8 @@ describe('file library', function () {
       });
     });
 
-    it('should pass with valid url and invalid protocol', function () {
-      return expect(Massage.validateUrl('invalid://www.lob.com'))
+    it('should fail with valid url and no protocol', function () {
+      return expect(Massage.validateUrl('www.lob.com'))
         .to.be.rejected;
     });
   });
