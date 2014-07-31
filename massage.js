@@ -1,21 +1,17 @@
-var Promise     = require('bluebird');
 var request     = require('request');
 var spawn       = require('child_process').spawn;
 var exec        = require('child_process').exec;
 var Streamifier = require('streamifier');
 var Url         = require('url');
 var Fs          = require('fs');
-var sha1        = require('sha1');
 var glob        = require('glob');
 var _           = require('lodash');
 var uuid        = require('uuid');
+var temp        = require('temp');
+var async       = require('async');
 
-/* Promisify core API methods */
-var pwrite  = Promise.promisify(Fs.writeFile);
-var pread   = Promise.promisify(Fs.readFile);
-var punlink = Promise.promisify(Fs.unlink);
-var pexec   = Promise.promisify(exec);
-var pglob   = Promise.promisify(glob);
+/* Cleanup temp files */
+temp.track();
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -47,72 +43,59 @@ exports.Errors = {
   invalidRotationDegrees: InvalidRotationDegrees
 };
 
-/** Return a 16-character unique identifier.
- * @author - Grayson Chao
- */
-var getUUID = function () {
-  return sha1(uuid.v4().toString()).slice(0, 15);
-};
-
-/**
-* Takes a buffer and returns the relevant metadata
-* @param {Buffer} buffer - readable file stream
-*/
-exports.getMetaData = function (buffer) {
-
-  return new Promise(function (resolve, reject) {
-    var fileStream = Streamifier.createReadStream(buffer);
-    var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
-      '-']);
-    identify.stdout.on('data', function (data) {
-      var meta = data.toString().split(',');
-      var metaObj = {
-        fileType: meta[0],
-        width: parseFloat(meta[1]),
-        length: parseFloat(meta[2]),
-        numPages: parseFloat(meta[3])
-      };
-      resolve(metaObj);
-    });
-    identify.stderr.on('data', function (data) {
-      /* istanbul ignore else */
-      // check if there are error messages
-      if (data.toString().substr(0, 8) === 'identify') {
-        reject(new InvalidPdfFile());
-      }
-    });
-    fileStream.pipe(identify.stdin);
+exports.getMetaData = function (buffer, cb) {
+  var fileStream = Streamifier.createReadStream(buffer);
+  var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
+    '-']);
+  identify.stdout.on('data', function (data) {
+    var meta = data.toString().split(',');
+    var metaObj = {
+      fileType: meta[0],
+      width: parseFloat(meta[1]),
+      length: parseFloat(meta[2]),
+      numPages: parseFloat(meta[3])
+    };
+    return cb(null, metaObj);
   });
+
+  identify.stderr.on('data', function (data) {
+    /* istanbul ignore else */
+    // check if there are error messages
+    if (data.toString().substr(0, 8) === 'identify') {
+      return cb(new InvalidPdfFile());
+    }
+  });
+  fileStream.pipe(identify.stdin);
 };
+
 
 /**
 * Takes a string/buffer and checks if it is a valid URL
 * @param {String} url - url to validate
 */
-exports.validateUrl = Promise.method(function (url) {
-  if (!url || (typeof url) !== 'string' || !Url.parse(url).protocol) {
-    throw new InvalidFileUrl();
+exports.validateUrl = function (url, cb) {
+  if (
+    !url ||
+    (url instanceof Buffer) ||
+    Url.parse(url).protocol === 'invalid:'
+  ) {
+    return cb(new InvalidFileUrl());
   } else {
-    return url;
+    return cb(null, url);
   }
-});
+};
 
 /**
 * Takes either a buffer or request params
 * @param {Object} params - URL or buffer
 */
-exports.getBuffer = Promise.method(function (params) {
-  if (params instanceof Buffer) {
-    return params;
+exports.getBuffer = function (file, cb) {
+  if (file instanceof Buffer) {
+    return cb(null, file);
   }
 
-  /* istanbul ignore else*/
-  if (typeof params === 'string') {
-    params = {url: params};
-  }
-
-  if (!Url.parse(params.url).protocol) {
-    throw new InvalidFileUrl();
+  if (!Url.parse(file).protocol) {
+    return cb(new InvalidFileUrl());
   }
 
   var defaults = {
@@ -121,52 +104,92 @@ exports.getBuffer = Promise.method(function (params) {
     encoding: null,
   };
 
-  Object.keys(defaults).forEach(function (name) {
-    /* istanbul ignore else*/
-    if (!params.hasOwnProperty(name)) {
-      params[name] = defaults[name];
+  request(options, function (err, res) {
+    if (err) {
+      return cb(new InvalidFileUrl());
+    } else {
+      return cb(null, res.body);
     }
   });
-
-  var preq = Promise.promisify(request);
-
-  return preq(params)
-  .then(function (res) {
-    return res[0].body;
-  })
-  .catch(function () {
-    throw new InvalidFileUrl();
-  });
-});
+};
 
 /**
 * Combine two files into a single a file
 * @param {Buffer} buffer1 - first file to combine
 * @param {Buffer} buffer2 - second file to combine
 */
-exports.merge = function (buffer1, buffer2) {
-  var timestamp      = getUUID().slice(0, 10);
-  var file1Path      = '/tmp/merge_' + timestamp + '_in1';
-  var file2Path      = '/tmp/merge_' + timestamp + '_in2';
-  var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
-  return Promise.all([
-    pwrite(file1Path, buffer1),
-    pwrite(file2Path, buffer2)
-  ])
-  .then(function () {
-    var cmd = 'pdftk ' + file1Path + ' ' + file2Path +
-      ' cat output ' + mergedFilePath;
-    return pexec(cmd);
-  })
-  .then(function () {
-    return pread(mergedFilePath);
-  })
-  .finally(function () {
-    return Promise.all([
-      punlink(file1Path),
-      punlink(file2Path),
-      punlink(mergedFilePath)
-    ]);
+exports.merge = function (buffer1, buffer2, cb) {
+  // make 2 temp files
+  async.parallel({
+    file1: function (done) {
+      temp.open({prefix: 'merge', suffix: '.pdf'},
+        function (err, file) {
+          if (err) {
+            done(err);
+          } else {
+            Fs.writeFile(file.path, buffer1, function (err) {
+              if (err) {
+                done(err);
+              } else {
+                done(null, file);
+              }
+            });
+          }
+        });
+     },
+    file2: function (done) {
+      temp.open({prefix: 'merge', suffix: '.pdf'},
+        function (err, file) {
+          if (err) {
+            done(err);
+          } else {
+            Fs.writeFile(file.path, buffer2, function (err) {
+              if (err) {
+                done(err);
+              } else {
+                done(null, file);
+              }
+            });
+          }
+        });
+     },
+    merged: function (done) {
+      temp.open({prefix: 'merge', suffix: '.pdf'}, done);
+    }
+  }, function (err, res) {
+    var file1 = res.file1;
+    var file2 = res.file2;
+    var merged = res.merged;
+    var cmd = 'pdftk' + ' ' + file1.path + ' ' + file2.path + ' ' +
+      'cat output' + ' ' + merged.path;
+    var merge = exec(cmd);
+    merge.stderr.on('data', function (data) {
+      return cb(new Error(data.toString()));
+    });
+    merge.on('close', function (code) {
+      if (code === 0) {
+        Fs.readFile(merged.path, function (err, buf) {
+          if (err) {
+            cb(err);
+          } else {
+            cb(null, buf);
+          }
+          async.parallel([
+            function (done) {
+              Fs.unlink(file1.path, done);
+            },
+            function (done) {
+              Fs.unlink(file2.path, done);
+            },
+            function (done) {
+              Fs.unlink(merged.path, done);
+            }
+          ]);
+        });
+      } else {
+        cb(new Error('pdftk merge operation has failed'));
+      }
+    });
   });
 };
 
@@ -175,28 +198,47 @@ exports.merge = function (buffer1, buffer2) {
 * @param {Buffer} buffer - PDF file buffer
 * @param {number} degrees - degrees to rotate PDF
 */
-exports.rotatePdf = function (buffer, degrees) {
+exports.rotatePdf = function (buffer, degrees, cb) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
-    return Promise.reject(new InvalidRotationDegrees());
+    cb(new InvalidRotationDegrees());
   }
-  var pdfHash  = getUUID() + sha1(buffer).slice(0, 10);
-  var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
-  var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
-
-  return pwrite(filePath, buffer)
-  .then(function () {
+  async.parallel({
+    infile: function (done) {
+      temp.open({prefix: 'rotate', suffix: '.pdf'},
+        function (err, file) {
+          Fs.writeFile(file.path, buffer, function (err) {
+            if (err) {
+              done(err);
+            } else {
+              done(null, file);
+            }
+          });
+        });
+    },
+    outfile: function (done) {
+      temp.open({prefix: 'rotate', suffix: '.pdf'}, done);
+    }
+  }, function (err, res) {
+    var infile  = res.infile;
+    var outfile = res.outfile;
     var cmd = 'convert -rotate ' + degrees + ' -density 300 ' +
-    filePath + ' ' + outPath;
-    return pexec(cmd);
-  })
-  .then(function () {
-    return pread(outPath);
-  })
-  .finally(function () {
-    return Promise.all([
-      punlink(filePath),
-      punlink(outPath)
-    ]);
+      infile.path + ' ' + outfile.path;
+    var rotate = exec(cmd);
+    rotate.on('close', function (code) {
+      if (code === 0) {
+        Fs.readFile(outfile.path, cb);
+      } else {
+        cb(new Error('pdftk rotate operation has failed'));
+      }
+      async.parallel([
+        function (done) {
+          Fs.unlink(infile.path, done);
+        },
+        function (done) {
+          Fs.unlink(outfile.path, done);
+        }
+      ]);
+    });
   });
 };
 
@@ -206,67 +248,106 @@ exports.rotatePdf = function (buffer, degrees) {
   * @author - Grayson Chao
   * @param {Buffer} pdf PDF file buffer
   */
-exports.burstPdf = function (pdf) {
-  var filePath = '/tmp/burst_' + getUUID().slice(0, 10);
-  return pwrite(filePath, pdf)
-  .then(function () {
-    var cmd = 'pdftk ' + filePath + ' burst output ' + filePath + '_page_%03d';
-    return pexec(cmd);
-  })
-  .then(function () {
-    return pglob(filePath + '_page_*')
-    .then(function (filenames) {
-      return _.sortBy(filenames, function (filename) {
-        return parseInt(filename.slice(filename.length - 3));
+exports.burstPdf = function (buffer, cb) {
+  temp.open({prefix: 'burst', suffix: '.pdf'},
+    function (err, file) {
+      Fs.writeFile(file.path, buffer, function (err) {
+        if (err) {
+          cb(err);
+          temp.cleanup();
+        } else {
+          burst(file);
+        }
       });
     });
-  })
-  .bind({})
-  .tap(function (filenames) {
-    this.outFiles = filenames.concat(filePath);
-  })
-  .map(function (filename) {
-    return pread(filename)
-    .then(function (page) {
-      return {
-        page: parseInt(filename.slice(filename.length - 3)),
-        file: page
-      };
+
+  function burst (file) {
+    var cmd = 'pdftk ' + file.path +
+      ' burst output ' + file.path + '_page_%03d';
+    var pdftk = exec(cmd);
+    pdftk.on('close', function (code) {
+      if (code === 0) {
+        readPages(file);
+      } else {
+        cb(new Error('pdftk burst operation has failed'));
+        temp.cleanup();
+      }
     });
-  })
-  .finally(function () {
-    return Promise.resolve(this.outFiles)
-    .each(function (filename) {
-      return punlink(filename);
+  }
+
+  function readPages(infile) {
+    glob(infile.path + '_page_*', function (err, filenames) {
+      var sortedNames = _.sortBy(filenames, function (filename) {
+        return parseInt(filename.slice(filename.length - 3));
+      });
+      async.map(sortedNames, function (file, done) {
+        Fs.readFile(file, done);
+      }, function (err, res) {
+        if (err) {
+          cb(err);
+        } else {
+          cb(null, res);
+        }
+        //cleanup all temp files
+        async.parallel(sortedNames.concat(infile.path)
+          .map(function (path) {
+            return (function (done) {
+              Fs.unlink(path, done);
+            });
+          })
+        );
+      });
     });
-  });
+  }
 };
 
 /**
   * Takes a pdf and resizes it to thumbnail size.
   * Returns a buffer of a PNG of the thumbnail.
   * @author - Grayson Chao
-  * @param {Buffer} pdf PDF file buffer
+  * @param {Buffer} buffer PDF file buffer
   * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
   */
-exports.generateThumbnail = function (pdf, size) {
-  var pdfHash  = getUUID() + sha1(pdf).toString().slice(0, 10);
-  var filePath = '/tmp/thumb_' + pdfHash + '_in.pdf';
-  var outPath  = '/tmp/thumb_' + pdfHash + '_out.png';
-
-  return pwrite(filePath, pdf)
-  .then(function () {
+exports.generateThumbnail = function (buffer, size, cb) {
+  async.parallel({
+    infile: function (done) {
+      temp.open({prefix: 'rotate', suffix: '.pdf'},
+        function (err, file) {
+          Fs.writeFile(file.path, buffer, function (err) {
+            if (err) {
+              done(err);
+            } else {
+              done(null, file);
+            }
+          });
+        });
+    },
+    outfile: function (done) {
+      temp.open({prefix: 'rotate', suffix: '.png'}, done);
+    }
+  }, function (err, res) {
+    var infile = res.infile;
+    var outfile = res.outfile;
     var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
-      filePath + ' ' + outPath;
-    return pexec(cmd);
-  })
-  .then(function () {
-    return pread(outPath); // actual return value when resolved
-  })
-  .finally(function () {
-    return Promise.all([
-      punlink(outPath),
-      punlink(filePath)
-    ]);
+      infile.path + ' ' + outfile.path;
+    var convert = exec(cmd);
+    convert.stderr.on('data', function (d) {
+      return cb(new Error(d.toString()));
+    });
+    convert.on('close', function (code) {
+      if (code === 0) {
+        Fs.readFile(outfile.path, cb);
+      } else {
+        cb(new Error('imagemagick convert operation has failed'));
+        async.parallel([
+          function (done) {
+            Fs.unlink(infile.path, done);
+          },
+          function (done) {
+            Fs.unlink(outfile.path, done);
+          }
+        ]);
+      }
+    });
   });
 };
