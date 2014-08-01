@@ -1,18 +1,15 @@
 language: node_js
 node_js:
 - '0.10'
-
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install pdftk imagemagick ghostscript
-
-install:
-    - npm install
-
+- sudo apt-get update -qq
+- sudo apt-get install pdftk imagemagick ghostscript
 before_script:
-  - npm run lint
-  - npm run style
-
+- npm run lint
+- npm run style
 after_script:
-  - npm run enforce
-  - npm run coveralls
+- npm run enforce
+- npm run coveralls
+notifications:
+  slack:
+    secure: Tvei0l/tfMUFs+zJAMESALjk6gNhIO1Erx87DsXPb4JbAa9uOBVGYNihxDi8eT7FEuvM9AS480lvK/A+/IWRC3ID7QOQaKF1htE0T4hjFGwU45ef/zZjH/z2ibDRZ3zOdd5pHCWW1JRHiMonQq1AcsatoV53NO/nlsSIUvg5kPI=
