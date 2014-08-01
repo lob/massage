@@ -105,7 +105,7 @@ exports.validateUrl = Promise.method(function (url) {
 * Takes either a buffer or a URL and returns a buffer
 * @param {File} file - URL or buffer
 */
-exports.getBuffer = Promise.method(function (file) {
+exports.getBuffer = Promise.method(function (file, options) {
   if (file instanceof Buffer) {
     return file;
   }
@@ -114,16 +114,20 @@ exports.getBuffer = Promise.method(function (file) {
     throw new InvalidFileUrl();
   }
 
-  var options = {
+  var requestOptions = {
     method: 'GET',
     url: file,
     timeout: 10000,
-    encoding: null
+    encoding: null,
   };
+
+  if (options) {
+    requestOptions = options;
+  }
 
   var preq = Promise.promisify(request);
 
-  return preq(options)
+  return preq(requestOptions)
   .then(function (res) {
     return res[0].body;
   })
