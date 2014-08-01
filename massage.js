@@ -122,7 +122,11 @@ exports.getBuffer = Promise.method(function (file, options) {
   };
 
   if (options) {
-    requestOptions = options;
+    Object.keys(options).forEach(function (name) {
+      if (name !== 'url') {
+        requestOptions[name] = options[name];
+      }
+    });
   }
 
   var preq = Promise.promisify(request);
