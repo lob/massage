@@ -71,8 +71,7 @@ describe('file library', function () {
     });
 
     it('should not override url', function () {
-      return Massage.getBuffer('https://www.lob.com/test.pdf',
-        {url: 'asdfasdf', timeout: 20000})
+      return Massage.getBuffer('https://www.lob.com/test.pdf')
       .then(function (file) {
         return expect(file instanceof Buffer).to.eql(true);
       });
