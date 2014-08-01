@@ -98,28 +98,39 @@ exports.validateUrl = Promise.method(function (url) {
 });
 
 /**
-* Takes either a buffer or a URL and returns a buffer
-* @param {File} file - URL or buffer
+* Takes either a buffer or request params
+* @param {Object} params - URL or buffer
 */
-exports.getBuffer = Promise.method(function (file) {
-  if (file instanceof Buffer) {
-    return file;
+exports.getBuffer = Promise.method(function (params) {
+  if (params instanceof Buffer) {
+    return params;
   }
 
-  if (!Url.parse(file).protocol) {
+  /* istanbul ignore else*/
+  if (typeof params === 'string') {
+    params = {url: params};
+  }
+
+  if (!Url.parse(params.url).protocol) {
     throw new InvalidFileUrl();
   }
 
-  var options = {
+  var defaults = {
     method: 'GET',
-    url: file,
     timeout: 10000,
-    encoding: null
+    encoding: null,
   };
+
+  Object.keys(defaults).forEach(function (name) {
+    /* istanbul ignore else*/
+    if (!params.hasOwnProperty(name)) {
+      params[name] = defaults[name];
+    }
+  });
 
   var preq = Promise.promisify(request);
 
-  return preq(options)
+  return preq(params)
   .then(function (res) {
     return res[0].body;
   })
