@@ -270,3 +270,33 @@ exports.generateThumbnail = function (pdf, size) {
     ]);
   });
 };
+
+/**
+  * Takes a png and converts it to a pdf.
+  * Returns a buffer of a PDF of the PNG.
+  * @author - Amrit Ayalur
+  * @param {Buffer} png - PNG buffer
+  * @param {Number} dpi - Desired DPI for the result PDF.
+  */
+exports.pngToPdf = function (png, dpi) {
+  var pngHash = getUUID() + sha1(png).toString().slice(0, 10);
+  var filePath = '/tmp/' + pngHash + '.png';
+  var outPath = '/tmp/' + pngHash + '.pdf';
+
+  return pwrite(filePath, png)
+  .then (function () {
+    var cmd = 'convert' + ' ' + filePath + ' ' +
+     '-quality 100 -units PixelsPerInch -density ' +
+      dpi + 'x' + dpi + ' ' + outPath;
+    return pexec(cmd);
+  })
+  .then(function () {
+    return pread(outPath);
+  })
+  .finally(function() {
+    return Promise.all([
+      punlink(outPath),
+      punlink(filePath)
+    ]);
+  });
+};

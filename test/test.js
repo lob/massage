@@ -139,6 +139,19 @@ describe('file library', function () {
     });
   });
 
+  describe('pngToPdf', function () {
+    it('should convert a png to a pdf with valid image and dpi', function () {
+      var filePath = __dirname + '/assets/1200x1800.png';
+      var testFile = Fs.readFileSync(filePath);
+      return Massage.pngToPdf(testFile, '300')
+      .then(function (pdf) {
+        expect(Massage.getMetaData(pdf)).to.eventually.eql(
+          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+       );
+      });
+    });
+  });
+
   describe('generateThumbnail', function () {
     it('should generate a pdf with valid input', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
