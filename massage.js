@@ -89,7 +89,6 @@ exports.getMetaData = function (buffer, cb) {
   fileStream.pipe(identify.stdin);
 };
 
-
 /**
 * Takes a string/buffer and checks if it is a valid URL
 * @param {String} url - url to validate
@@ -201,7 +200,8 @@ exports.rotatePdf = function (buffer, degrees, cb) {
   * Takes a multipage pdf buffer and returns an array of 1-page pdf buffers
   * (Sorted by page number)
   * @author - Grayson Chao
-  * @param {Buffer} pdf PDF file buffer
+  * @param {Buffer} buffer PDF file buffer
+  * @param {Function} cb
   */
 exports.burstPdf = function (buffer, cb) {
   var tempFn = exports.writeTemp(buffer, {prefix: 'burst', suffix: '.pdf'});
@@ -218,7 +218,7 @@ exports.burstPdf = function (buffer, cb) {
     });
   }
 
-  function readPages(infile) {
+  function readPages (infile) {
     glob(infile.path + '_page_*', function (err, filenames) {
       var sortedNames = _.sortBy(filenames, function (filename) {
         return parseInt(filename.slice(filename.length - 3));
