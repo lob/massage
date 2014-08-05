@@ -109,12 +109,17 @@ exports.validateUrl = function (url, cb) {
 * Takes either a buffer or request params
 * @param {Object} params - URL or buffer
 */
-exports.getBuffer = function (file, cb) {
-  if (file instanceof Buffer) {
-    return cb(null, file);
+exports.getBuffer = function (params, cb) {
+  if (params instanceof Buffer) {
+    return cb(null, params);
   }
 
-  if (!Url.parse(file).protocol) {
+  /* istanbul ignore else */
+  if (typeof params === 'string') {
+    params = {url: params};
+  }
+
+  if (!Url.parse(params.url).protocol) {
     return cb(new InvalidFileUrl());
   }
 
@@ -124,7 +129,14 @@ exports.getBuffer = function (file, cb) {
     encoding: null,
   };
 
-  request(options, function (err, res) {
+  Object.keys(defaults).forEach(function (key) {
+    /* istanbul ignore else */
+    if (!params[key]) {
+      params[key] = defaults[key];
+    }
+  });
+
+  request(params, function (err, res) {
     if (err) {
       return cb(new InvalidFileUrl());
     } else {
