@@ -208,19 +208,6 @@ describe('file library', function () {
     });
   });
 
-  describe('imageToPdf', function () {
-    it('should convert an image to a pdf', function () {
-      var filePath = __dirname + '/assets/1200x1800.png';
-      var testFile = Fs.readFileSync(filePath);
-      return Massage.imageToPdf(testFile, '300')
-      .then(function (pdf) {
-        expect(Massage.getMetaData(pdf)).to.eventually.eql(
-          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
-       );
-      });
-    });
-  });
-
   describe('generateThumbnail', function () {
     it('should generate a png with valid input', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
@@ -237,6 +224,42 @@ describe('file library', function () {
       var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
       Fs.readFile(filePath, function (err, testFile) {
         Massage.generateThumbnail(testFile, '300', function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
+    });
+  });
+
+  describe('imageToPdf', function () {
+    it('should convert an image to a pdf', function (done) {
+      var filePath = __dirname + '/assets/1200x1800.png';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.imageToPdf(testFile, '300', function (err, pdf) {
+          Massage.getMetaData(pdf, function (err, data) {
+            expect(data).to.eql(
+              {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+            );
+            done();
+          });
+        });
+      });
+    });
+
+    it('should fail with an invalid file type', function (done) {
+      var filePath = __dirname + '/assets/8.5x11.docx';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.imageToPdf(testFile, '300', function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
+    });
+
+    it('should error with bad input', function (done) {
+      var filePath = __dirname + '/assets/1200x1800.png';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.imageToPdf(testFile, 'lob', function (err) {
           expect(err).to.exist;
           done();
         });
