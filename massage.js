@@ -6,12 +6,8 @@ var Url         = require('url');
 var Fs          = require('fs');
 var glob        = require('glob');
 var _           = require('lodash');
-var uuid        = require('uuid');
 var temp        = require('temp');
 var async       = require('async');
-
-/* Cleanup temp files */
-temp.track();
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -37,10 +33,35 @@ function InvalidRotationDegrees () {
 InvalidRotationDegrees.prototype = Object.create(Error.prototype);
 InvalidRotationDegrees.prototype.constructor = InvalidRotationDegrees;
 
+function ImageProcessingFailure () {
+  this.name = 'Image Processing Failure';
+  this.message = 'Imagemagick or pdftk exited with a non-zero exit code.';
+}
+
+ImageProcessingFailure.prototype = Object.create(Error.prototype);
+ImageProcessingFailure.prototype.constructor = ImageProcessingFailure;
+
 exports.Errors = {
   invalidFileUrl: InvalidFileUrl,
   invalidPdfFile: InvalidPdfFile,
   invalidRotationDegrees: InvalidRotationDegrees
+};
+
+/**
+  * Return a function which takes a callback, writes buffer to a temp file,
+  * then passes the temp file to the callback on success.
+  * The temp function is passed the (optional) options object.
+  * @author - Grayson Chao
+  * @param {Buffer} buffer
+  */
+exports.writeTemp = function (buffer, options) {
+  return function (done) {
+    temp.open(options, function (err, file) {
+      Fs.writeFile(file.path, buffer, function (err) {
+        done(err, file);
+      });
+    });
+  };
 };
 
 exports.getMetaData = function (buffer, cb) {
@@ -121,73 +142,24 @@ exports.getBuffer = function (file, cb) {
 exports.merge = function (buffer1, buffer2, cb) {
   // make 2 temp files
   async.parallel({
-    file1: function (done) {
-      temp.open({prefix: 'merge', suffix: '.pdf'},
-        function (err, file) {
-          if (err) {
-            done(err);
-          } else {
-            Fs.writeFile(file.path, buffer1, function (err) {
-              if (err) {
-                done(err);
-              } else {
-                done(null, file);
-              }
-            });
-          }
-        });
-     },
-    file2: function (done) {
-      temp.open({prefix: 'merge', suffix: '.pdf'},
-        function (err, file) {
-          if (err) {
-            done(err);
-          } else {
-            Fs.writeFile(file.path, buffer2, function (err) {
-              if (err) {
-                done(err);
-              } else {
-                done(null, file);
-              }
-            });
-          }
-        });
-     },
-    merged: function (done) {
-      temp.open({prefix: 'merge', suffix: '.pdf'}, done);
-    }
+    file1: exports.writeTemp(buffer1, {prefix: 'merge', suffix: '.pdf'}),
+    file2: exports.writeTemp(buffer2, {prefix: 'merge', suffix: '.pdf'}),
+    merged: exports.writeTemp(new Buffer(0),
+      {prefix: 'merge', suffix: '.pdf'})
   }, function (err, res) {
     var file1 = res.file1;
     var file2 = res.file2;
     var merged = res.merged;
     var cmd = 'pdftk' + ' ' + file1.path + ' ' + file2.path + ' ' +
       'cat output' + ' ' + merged.path;
-    var merge = exec(cmd);
-    merge.stderr.on('data', function (data) {
-      return cb(new Error(data.toString()));
-    });
-    merge.on('close', function (code) {
-      if (code === 0) {
-        Fs.readFile(merged.path, function (err, buf) {
-          if (err) {
-            cb(err);
-          } else {
-            cb(null, buf);
-          }
-          async.parallel([
-            function (done) {
-              Fs.unlink(file1.path, done);
-            },
-            function (done) {
-              Fs.unlink(file2.path, done);
-            },
-            function (done) {
-              Fs.unlink(merged.path, done);
-            }
-          ]);
-        });
+    exec(cmd, function (err, stdout, stderr) {
+      if (err || stderr) {
+        cb(new ImageProcessingFailure());
       } else {
-        cb(new Error('pdftk merge operation has failed'));
+        Fs.readFile(merged.path, function (err, buf) {
+          cb(err, buf);
+          async.each([file1.path, file2.path, merged.path], Fs.unlink);
+        });
       }
     });
   });
@@ -203,41 +175,24 @@ exports.rotatePdf = function (buffer, degrees, cb) {
     cb(new InvalidRotationDegrees());
   }
   async.parallel({
-    infile: function (done) {
-      temp.open({prefix: 'rotate', suffix: '.pdf'},
-        function (err, file) {
-          Fs.writeFile(file.path, buffer, function (err) {
-            if (err) {
-              done(err);
-            } else {
-              done(null, file);
-            }
-          });
-        });
-    },
-    outfile: function (done) {
-      temp.open({prefix: 'rotate', suffix: '.pdf'}, done);
-    }
+    infile: exports.writeTemp(buffer,
+      {prefix: 'rotate', suffix: '.pdf'}),
+    outfile: exports.writeTemp(new Buffer(0),
+      {prefix: 'rotate', suffix: '.pdf'})
   }, function (err, res) {
     var infile  = res.infile;
     var outfile = res.outfile;
     var cmd = 'convert -rotate ' + degrees + ' -density 300 ' +
       infile.path + ' ' + outfile.path;
-    var rotate = exec(cmd);
-    rotate.on('close', function (code) {
-      if (code === 0) {
-        Fs.readFile(outfile.path, cb);
+    exec(cmd, function (err, stdout, stderr) {
+      if (err || stderr) {
+        cb(new ImageProcessingFailure());
       } else {
-        cb(new Error('pdftk rotate operation has failed'));
+        Fs.readFile(outfile.path, function (err, buf) {
+          cb(err, buf);
+          async.each([infile.path, outfile.path], Fs.unlink);
+        });
       }
-      async.parallel([
-        function (done) {
-          Fs.unlink(infile.path, done);
-        },
-        function (done) {
-          Fs.unlink(outfile.path, done);
-        }
-      ]);
     });
   });
 };
@@ -249,28 +204,16 @@ exports.rotatePdf = function (buffer, degrees, cb) {
   * @param {Buffer} pdf PDF file buffer
   */
 exports.burstPdf = function (buffer, cb) {
-  temp.open({prefix: 'burst', suffix: '.pdf'},
-    function (err, file) {
-      Fs.writeFile(file.path, buffer, function (err) {
-        if (err) {
-          cb(err);
-          temp.cleanup();
-        } else {
-          burst(file);
-        }
-      });
-    });
+  var tempFn = exports.writeTemp(buffer, {prefix: 'burst', suffix: '.pdf'});
 
-  function burst (file) {
+  function burst (err, file) {
     var cmd = 'pdftk ' + file.path +
       ' burst output ' + file.path + '_page_%03d';
-    var pdftk = exec(cmd);
-    pdftk.on('close', function (code) {
-      if (code === 0) {
-        readPages(file);
+    exec(cmd, function (err, stdout, stderr) {
+      if (err || stderr) {
+        cb(new ImageProcessingFailure());
       } else {
-        cb(new Error('pdftk burst operation has failed'));
-        temp.cleanup();
+        readPages(file);
       }
     });
   }
@@ -280,25 +223,14 @@ exports.burstPdf = function (buffer, cb) {
       var sortedNames = _.sortBy(filenames, function (filename) {
         return parseInt(filename.slice(filename.length - 3));
       });
-      async.map(sortedNames, function (file, done) {
-        Fs.readFile(file, done);
-      }, function (err, res) {
-        if (err) {
-          cb(err);
-        } else {
-          cb(null, res);
-        }
-        //cleanup all temp files
-        async.parallel(sortedNames.concat(infile.path)
-          .map(function (path) {
-            return (function (done) {
-              Fs.unlink(path, done);
-            });
-          })
-        );
+      async.map(sortedNames, Fs.readFile, function (err, buf) {
+        cb(err, buf);
+        async.each(sortedNames.concat(infile.path), Fs.unlink);
       });
     });
   }
+
+  tempFn(burst);
 };
 
 /**
@@ -310,43 +242,23 @@ exports.burstPdf = function (buffer, cb) {
   */
 exports.generateThumbnail = function (buffer, size, cb) {
   async.parallel({
-    infile: function (done) {
-      temp.open({prefix: 'rotate', suffix: '.pdf'},
-        function (err, file) {
-          Fs.writeFile(file.path, buffer, function (err) {
-            if (err) {
-              done(err);
-            } else {
-              done(null, file);
-            }
-          });
-        });
-    },
-    outfile: function (done) {
-      temp.open({prefix: 'rotate', suffix: '.png'}, done);
-    }
+    infile: exports.writeTemp(buffer,
+      {prefix: 'thumb', suffix: '.pdf'}),
+    outfile: exports.writeTemp(new Buffer(0),
+      {prefix: 'thumb', suffix: '.png'})
   }, function (err, res) {
     var infile = res.infile;
     var outfile = res.outfile;
     var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
       infile.path + ' ' + outfile.path;
-    var convert = exec(cmd);
-    convert.stderr.on('data', function (d) {
-      return cb(new Error(d.toString()));
-    });
-    convert.on('close', function (code) {
-      if (code === 0) {
-        Fs.readFile(outfile.path, cb);
+    exec(cmd, function (err, stdout, stderr) {
+      if (err || stderr) {
+        cb(new ImageProcessingFailure());
       } else {
-        cb(new Error('imagemagick convert operation has failed'));
-        async.parallel([
-          function (done) {
-            Fs.unlink(infile.path, done);
-          },
-          function (done) {
-            Fs.unlink(outfile.path, done);
-          }
-        ]);
+        Fs.readFile(outfile.path, function (err, buf) {
+          cb(err, buf);
+          async.each([infile.path, outfile.path], Fs.unlink);
+        });
       }
     });
   });

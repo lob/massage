@@ -5,11 +5,22 @@ var Fs      = require('fs');
 var async   = require('async');
 var sizeOf  = require('image-size');
 
+/* jshint expr: true */
 chai
 .use(require('chai-as-promised'))
 .use(require('chai-things'));
 
 describe('file library', function () {
+  describe('writeTemp', function () {
+    it('should have correct defaults', function (done) {
+      Massage.writeTemp(new Buffer(0))(function (err, file) {
+        expect(file).to.have.property('fd');
+        expect(file).to.have.property('path');
+        done();
+      });
+    });
+  });
+
   describe('getMetaData', function () {
     it('should be able to handle a buffer', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
@@ -23,9 +34,7 @@ describe('file library', function () {
     it('should fail with an invalid buffer type', function (done) {
       var testFile = new Buffer(10);
       Massage.getMetaData(testFile, function (err) {
-        (function () {
-          return expect(err).to.exist;
-        })();
+        expect(err).to.exist;
         done();
       });
     });
@@ -34,9 +43,7 @@ describe('file library', function () {
       var filePath = __dirname + '/assets/8.5x11.docx';
       Fs.readFile(filePath, function (err, testFile) {
         Massage.getMetaData(testFile, function (err) {
-          (function () {
-            return expect(err).to.exist;
-          })();
+          expect(err).to.exist;
           done();
         });
       });
@@ -62,9 +69,7 @@ describe('file library', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
       Fs.readFile(filePath, function (err, buffer) {
         Massage.validateUrl(buffer, function (err) {
-          (function () {
-            return expect(err).to.exist;
-          })();
+          expect(err).to.exist;
           done();
         });
       });
@@ -72,9 +77,7 @@ describe('file library', function () {
 
     it('should pass with valid url and invalid protocol', function (done) {
       Massage.validateUrl('invalid://www.lob.com', function (err) {
-        (function () {
-          return expect(err).to.exist;
-        })();
+        expect(err).to.exist;
         done();
       });
     });
@@ -100,18 +103,14 @@ describe('file library', function () {
 
     it('should throw an error for an invlaid url', function (done) {
       Massage.getBuffer('test.pdf', function (err) {
-        (function () {
-          return expect(err).to.exist;
-        })();
+        expect(err).to.exist;
         done();
       });
     });
 
     it('should throw an error when the url is wrong', function (done) {
       Massage.getBuffer('http://loasdfs.com', function (err) {
-        (function () {
-          return expect(err).to.exist;
-        })();
+        expect(err).to.exist;
         done();
       });
     });
@@ -146,6 +145,13 @@ describe('file library', function () {
         });
       });
     });
+
+    it('should error when pdftk fails', function (done) {
+      Massage.merge(new Buffer(10), new Buffer(20), function (err) {
+        expect(err).to.exist;
+        done();
+      });
+    });
   });
 
   describe('rotatePdf', function () {
@@ -164,9 +170,7 @@ describe('file library', function () {
 
     it('should error when an invalid buffer is given', function (done) {
       Massage.rotatePdf(new Buffer(10), 90, function (err) {
-        (function () {
-          return expect(err).to.exist;
-        })();
+        expect(err).to.exist;
         done();
       });
     });
@@ -175,9 +179,7 @@ describe('file library', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
       Fs.readFile(filePath, function (err, testFile) {
         Massage.rotatePdf(testFile, 33, function (err) {
-          (function () {
-            return expect(err).to.exist;
-          })();
+          expect(err).to.exist;
           done();
         });
       });
@@ -190,6 +192,16 @@ describe('file library', function () {
       Fs.readFile(filePath, function (err, testFile) {
         Massage.burstPdf(testFile, function (err, bufs) {
           expect(bufs).to.have.length(2);
+          done();
+        });
+      });
+    });
+
+    it('should error with bad input', function (done) {
+      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.burstPdf(testFile, function (err) {
+          expect(err).to.exist;
           done();
         });
       });
@@ -207,5 +219,16 @@ describe('file library', function () {
         });
       });
     });
+
+    it('should error on invalid input', function (done) {
+      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.generateThumbnail(testFile, '300', function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
+    });
   });
 });
+/* jshint expr: false */
