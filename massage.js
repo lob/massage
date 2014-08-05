@@ -277,18 +277,19 @@ exports.generateThumbnail = function (buffer, size, cb) {
 };
 
 /**
-  * Takes a png and converts it to a pdf.
-  * Returns a buffer of a PDF of the PNG.
+  * Takes an image and converts it to a PDF.
+  * Returns a buffer of a PDF of the Image.
   * @author - Amrit Ayalur
-  * @param {Buffer} png - PNG buffer
+  * @param {Buffer} image - Image buffer
   * @param {Number} dpi - Desired DPI for the result PDF.
   */
-exports.pngToPdf = function (png, dpi) {
-  var pngHash = getUUID() + sha1(png).toString().slice(0, 10);
-  var filePath = '/tmp/' + pngHash + '.png';
-  var outPath = '/tmp/' + pngHash + '.pdf';
+exports.imageToPdf = function (image, dpi) {
+  var imageHash = getUUID() + sha1(image).toString().slice(0, 10);
+  var filePath = '/tmp/' + imageHash + '.' +
+    exports.getMetaData(image).fileType;
+  var outPath = '/tmp/' + imageHash + '.pdf';
 
-  return pwrite(filePath, png)
+  return pwrite(filePath, image)
   .then (function () {
     var cmd = 'convert' + ' ' + filePath + ' ' +
      '-quality 100 -units PixelsPerInch -density ' +
@@ -298,7 +299,7 @@ exports.pngToPdf = function (png, dpi) {
   .then(function () {
     return pread(outPath);
   })
-  .finally(function() {
+  .finally(function () {
     return Promise.all([
       punlink(outPath),
       punlink(filePath)

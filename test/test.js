@@ -208,11 +208,11 @@ describe('file library', function () {
     });
   });
 
-  describe('pngToPdf', function () {
-    it('should convert a png to a pdf with valid image and dpi', function () {
+  describe('imageToPdf', function () {
+    it('should convert an image to a pdf', function () {
       var filePath = __dirname + '/assets/1200x1800.png';
       var testFile = Fs.readFileSync(filePath);
-      return Massage.pngToPdf(testFile, '300')
+      return Massage.imageToPdf(testFile, '300')
       .then(function (pdf) {
         expect(Massage.getMetaData(pdf)).to.eventually.eql(
           {fileType: 'PDF', width: 4, length: 6, numPages: 1}
