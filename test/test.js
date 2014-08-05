@@ -2,153 +2,233 @@ var chai    = require('chai');
 var expect  = chai.expect;
 var Massage = require('../massage');
 var Fs      = require('fs');
-var Promise = require('bluebird');
+var async   = require('async');
+var sizeOf  = require('image-size');
 
+/* jshint expr: true */
 chai
 .use(require('chai-as-promised'))
 .use(require('chai-things'));
 
 describe('file library', function () {
+  describe('writeTemp', function () {
+    it('should have correct defaults', function (done) {
+      Massage.writeTemp(new Buffer(0))(function (err, file) {
+        expect(file).to.have.property('fd');
+        expect(file).to.have.property('path');
+        done();
+      });
+    });
+  });
+
   describe('getMetaData', function () {
-    it('should be able to handle a buffer', function () {
+    it('should be able to handle a buffer', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
       var testFile = Fs.readFileSync(filePath);
-      return expect(Massage.getMetaData(testFile)).to.eventually.eql(
-        {fileType: 'PDF', width: 6, length: 4, numPages: 1}
-      );
+      Massage.getMetaData(testFile, function (err, data) {
+        expect(data).eql({fileType: 'PDF', width: 6, length: 4, numPages: 1});
+        done();
+      });
     });
 
-    it('should fail with an invalid buffer type', function () {
+    it('should fail with an invalid buffer type', function (done) {
       var testFile = new Buffer(10);
-      return expect(Massage.getMetaData(testFile)).to.be.rejected;
+      Massage.getMetaData(testFile, function (err) {
+        expect(err).to.exist;
+        done();
+      });
     });
 
-    it('should fail with an invalid file type', function () {
+    it('should fail with an invalid file type', function (done) {
       var filePath = __dirname + '/assets/8.5x11.docx';
-      var testFile = Fs.readFileSync(filePath);
-      return expect(Massage.getMetaData(testFile)).to.be.rejected;
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.getMetaData(testFile, function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
     });
   });
 
   describe('validateUrl', function () {
-    it('should pass with valid url and protocol', function () {
-      return expect(Massage.validateUrl('https://www.lob.com'))
-        .to.be.fulfilled;
-    });
-
-    it('should fail with non-url', function () {
-      var filePath = __dirname + '/assets/4x6.pdf';
-      Fs.readFile(filePath, function (err, buffer) {
-        return expect(Massage.validateUrl(buffer))
-          .to.be.rejected;
+    it('should pass with valid url and protocol', function (done) {
+      Massage.validateUrl('https://www.lob.com', function (err, res) {
+        expect(res).to.eql('https://www.lob.com');
+        done();
       });
     });
 
-    it('should fail with valid url and no protocol', function () {
-      return expect(Massage.validateUrl('www.lob.com'))
-        .to.be.rejected;
+    it('should pass with valid url and no protocol', function (done) {
+      Massage.validateUrl('www.lob.com', function (err, res) {
+        expect(res).to.eql('www.lob.com');
+        done();
+      });
+    });
+
+    it('should fail with non-url', function (done) {
+      var filePath = __dirname + '/assets/4x6.pdf';
+      Fs.readFile(filePath, function (err, buffer) {
+        Massage.validateUrl(buffer, function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
+    });
+
+    it('should pass with valid url and invalid protocol', function (done) {
+      Massage.validateUrl('invalid://www.lob.com', function (err) {
+        expect(err).to.exist;
+        done();
+      });
     });
   });
 
   describe('getBuffer', function () {
-    it('should return a buffer unmodified', function () {
+    it('should return a buffer unmodified', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
-
-      return Massage.getBuffer(testFile)
-      .then(function (file) {
-        return expect(file instanceof Buffer).to.eql(true);
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.getBuffer(testFile, function (err, file) {
+          expect(file instanceof Buffer).to.eql(true);
+          done();
+        });
       });
     });
 
-    it('should not override url', function () {
-      return Massage.getBuffer('https://www.lob.com/test.pdf')
-      .then(function (file) {
-        return expect(file instanceof Buffer).to.eql(true);
+    it('should download file and return buffer', function (done) {
+      Massage.getBuffer('https://www.lob.com/test.pdf', function (err, file) {
+        expect(file instanceof Buffer).to.eql(true);
+        done();
       });
     });
 
-    it('should download file and return buffer', function () {
-      return Massage.getBuffer('https://www.lob.com/test.pdf')
-      .then(function (file) {
-        return expect(file instanceof Buffer).to.eql(true);
+    it('should throw an error for an invlaid url', function (done) {
+      Massage.getBuffer('test.pdf', function (err) {
+        expect(err).to.exist;
+        done();
       });
     });
 
-    it('should throw an error for an invlaid url', function () {
-      return expect(Massage.getBuffer('test.pdf')).to.be.rejected;
-    });
-
-    it('should throw an error when the url is wrong', function () {
-      return expect(Massage.getBuffer('https://www.loasdfas.com'))
-        .to.be.rejected;
+    it('should throw an error when the url is wrong', function (done) {
+      Massage.getBuffer('http://loasdfs.com', function (err) {
+        expect(err).to.exist;
+        done();
+      });
     });
   });
 
   describe('merge', function () {
-    it('should combine two files', function () {
-      var file1 = Fs.readFileSync(__dirname + '/assets/4x6.pdf');
-      var file2 = Fs.readFileSync(__dirname + '/assets/4x6.pdf');
+    it('should combine two files', function (done) {
+      async.parallel({
+        file1: function (done) {
+          Fs.readFile(__dirname + '/assets/4x6.pdf', done);
+        },
+        file2: function (done) {
+          Fs.readFile(__dirname + '/assets/4x6.pdf', done);
+        }
+      }, function (err, res) {
+        Massage.merge(res.file1, res.file2, function (err, merged) {
+          async.parallel({
+            file1: function (done) {
+              Massage.getMetaData(res.file1, done);
+            },
+            file2: function (done) {
+              Massage.getMetaData(res.file2, done);
+            },
+            merged: function (done) {
+              Massage.getMetaData(merged, done);
+            }
+          }, function (err, res) {
+            expect(res.file1.numPages + res.file2.numPages)
+              .to.eql(res.merged.numPages);
+            done();
+          });
+        });
+      });
+    });
 
-      return Massage.merge(file1, file2)
-      .then (function (mergedFile) {
-        return Promise.all([
-          Massage.getMetaData(file1),
-          Massage.getMetaData(file2),
-          Massage.getMetaData(mergedFile)
-        ]);
-      })
-      .spread(function (file1, file2, mergedFile) {
-        return expect(file1.numPages + file2.numPages)
-          .to.eql(mergedFile.numPages);
+    it('should error when pdftk fails', function (done) {
+      Massage.merge(new Buffer(10), new Buffer(20), function (err) {
+        expect(err).to.exist;
+        done();
       });
     });
   });
 
   describe('rotatePdf', function () {
-    it('should rotate a PDF and return buffer', function () {
+    it('should rotate a PDF and return buffer', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
-      return Massage.rotatePdf(testFile, 90)
-      .then(function (data) {
-        return expect(Massage.getMetaData(data)).to.eventually.eql(
-          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
-        );
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.rotatePdf(testFile, 90, function (err, buf) {
+          Massage.getMetaData(buf, function (err, data) {
+            expect(data)
+            .to.eql({fileType: 'PDF', width: 4, length: 6, numPages: 1});
+            done();
+          });
+        });
       });
     });
 
-    it('should error when an invalid buffer is given', function () {
-      return expect(Massage.rotatePdf(new Buffer(10), 90)).to.be.rejected;
+    it('should error when an invalid buffer is given', function (done) {
+      Massage.rotatePdf(new Buffer(10), 90, function (err) {
+        expect(err).to.exist;
+        done();
+      });
     });
 
-    it('should error when an invalid degrees is given', function () {
+    it('should error when an invalid degrees is given', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
-      return expect(Massage.rotatePdf(testFile, 33)).to.be.rejected;
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.rotatePdf(testFile, 33, function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
     });
   });
 
   describe('burstPdf', function () {
-    it('should burst a pdf into pages', function () {
+    it('should burst a pdf into pages', function (done) {
       var filePath = __dirname + '/assets/4x6_twice.pdf';
-      var testFile = Fs.readFileSync(filePath);
-      return Massage.burstPdf(testFile)
-      .then(function (files) {
-        return expect(files).to.have.length(2);
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.burstPdf(testFile, function (err, bufs) {
+          expect(bufs).to.have.length(2);
+          done();
+        });
+      });
+    });
+
+    it('should error with bad input', function (done) {
+      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.burstPdf(testFile, function (err) {
+          expect(err).to.exist;
+          done();
+        });
       });
     });
   });
 
   describe('generateThumbnail', function () {
-    it('should generate a pdf with valid input', function () {
+    it('should generate a png with valid input', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
-      return Massage.generateThumbnail(testFile, '200x300')
-      .then(function (thumb) {
-        expect(Massage.getMetaData(thumb)).to.eventually.eql(
-          {fileType: 'PNG', width: 200, length: 300, numPages: 1}
-        );
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.generateThumbnail(testFile, '300', function (err, thumb) {
+          expect(sizeOf(thumb).height).to.eql(200);
+          expect(sizeOf(thumb).width).to.eql(300);
+          done();
+        });
+      });
+    });
+
+    it('should error on invalid input', function (done) {
+      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
+      Fs.readFile(filePath, function (err, testFile) {
+        Massage.generateThumbnail(testFile, '300', function (err) {
+          expect(err).to.exist;
+          done();
+        });
       });
     });
   });
 });
+/* jshint expr: false */
