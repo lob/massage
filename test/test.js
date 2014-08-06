@@ -154,6 +154,44 @@ describe('file library', function () {
     });
   });
 
+  describe('imageToPdf', function () {
+    it('should convert an image to a pdf', function (done) {
+      var filePath = __dirname + '/assets/1200x1800.png';
+      return Fs.readFile(filePath, function (err, testFile) {
+        return Massage.imageToPdf(testFile, '300', function (err, pdf) {
+          return Massage.getMetaData(pdf, function (err, data) {
+            expect(data).to.eql(
+              {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+            );
+            done();
+            return;
+          });
+        });
+      });
+    });
+
+    it('should fail with an invalid file type', function (done) {
+      var filePath = __dirname + '/assets/8.5x11.docx';
+      return Fs.readFile(filePath, function (err, testFile) {
+        return Massage.imageToPdf(testFile, '300', function (err) {
+          expect(err).to.exist;
+          done();
+          return;
+        });
+      });
+    });
+
+    it('should error with bad input', function (done) {
+      var filePath = __dirname + '/assets/1200x1800.png';
+      return Fs.readFile(filePath, function (err, testFile) {
+        Massage.imageToPdf(testFile, 'lob', function (err) {
+          expect(err).to.exist;
+          done();
+        });
+      });
+    });
+  });
+
   describe('rotatePdf', function () {
     it('should rotate a PDF and return buffer', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
@@ -186,28 +224,6 @@ describe('file library', function () {
     });
   });
 
-  describe('burstPdf', function () {
-    it('should burst a pdf into pages', function (done) {
-      var filePath = __dirname + '/assets/4x6_twice.pdf';
-      return Fs.readFile(filePath, function (err, testFile) {
-        Massage.burstPdf(testFile, function (err, bufs) {
-          expect(bufs).to.have.length(2);
-          done();
-        });
-      });
-    });
-
-    it('should error with bad input', function (done) {
-      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
-      return Fs.readFile(filePath, function (err, testFile) {
-        Massage.burstPdf(testFile, function (err) {
-          expect(err).to.exist;
-          done();
-        });
-      });
-    });
-  });
-
   describe('generateThumbnail', function () {
     it('should generate a png with valid input', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
@@ -232,37 +248,21 @@ describe('file library', function () {
     });
   });
 
-  describe('imageToPdf', function () {
-    it('should convert an image to a pdf', function (done) {
-      var filePath = __dirname + '/assets/1200x1800.png';
+  describe('burstPdf', function () {
+    it('should burst a pdf into pages', function (done) {
+      var filePath = __dirname + '/assets/4x6_twice.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        return Massage.imageToPdf(testFile, '300', function (err, pdf) {
-          return Massage.getMetaData(pdf, function (err, data) {
-            expect(data).to.eql(
-              {fileType: 'PDF', width: 4, length: 6, numPages: 1}
-            );
-            done();
-            return;
-          });
-        });
-      });
-    });
-
-    it('should fail with an invalid file type', function (done) {
-      var filePath = __dirname + '/assets/8.5x11.docx';
-      return Fs.readFile(filePath, function (err, testFile) {
-        return Massage.imageToPdf(testFile, '300', function (err) {
-          expect(err).to.exist;
+        Massage.burstPdf(testFile, function (err, bufs) {
+          expect(bufs).to.have.length(2);
           done();
-          return;
         });
       });
     });
 
     it('should error with bad input', function (done) {
-      var filePath = __dirname + '/assets/1200x1800.png';
+      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.imageToPdf(testFile, 'lob', function (err) {
+        Massage.burstPdf(testFile, function (err) {
           expect(err).to.exist;
           done();
         });
