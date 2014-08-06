@@ -237,12 +237,9 @@ describe('file library', function () {
     });
 
     it('should error on invalid input', function (done) {
-      var filePath = __dirname + '/assets/4x7-WRONGNAME!.pdf';
-      return Fs.readFile(filePath, function (err, testFile) {
-        return Massage.generateThumbnail(testFile, '300', function (err) {
-          expect(err).to.exist;
-          done();
-        });
+      return Massage.generateThumbnail(new Buffer('asdf'), '300', function (err) {
+        expect(err).to.exist;
+        done();
       });
     });
   });
@@ -260,7 +257,6 @@ describe('file library', function () {
 
     it('should error with bad input', function (done) {
       Massage.burstPdf('asdfasdf', function (err, bufs) {
-        console.log(bufs);
         expect(err).to.exist;
         done();
       });
