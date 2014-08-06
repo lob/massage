@@ -44,7 +44,8 @@ ImageProcessingFailure.prototype.constructor = ImageProcessingFailure;
 exports.Errors = {
   invalidFileUrl: InvalidFileUrl,
   invalidPdfFile: InvalidPdfFile,
-  invalidRotationDegrees: InvalidRotationDegrees
+  invalidRotationDegrees: InvalidRotationDegrees,
+  imageProcessingFailure: ImageProcessingFailure
 };
 
 /**
@@ -299,7 +300,7 @@ exports.imageToPdf = function (image, dpi, cb) {
         dpi + 'x' + dpi + ' ' + outfile.path;
       exec(cmd, function (err, stdout, stderr) {
         if (err || stderr) {
-          cb(err);
+          cb(new ImageProcessingFailure());
         } else {
           Fs.readFile(outfile.path, function (err, buf) {
             cb(err, buf);
