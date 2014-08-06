@@ -259,7 +259,8 @@ describe('file library', function () {
     });
 
     it('should error with bad input', function (done) {
-      Massage.burstPdf('asdfasdf', function (err) {
+      Massage.burstPdf('asdfasdf', function (err, bufs) {
+        console.log(bufs);
         expect(err).to.exist;
         done();
       });
