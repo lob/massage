@@ -167,7 +167,7 @@ exports.merge = function (buffer1, buffer2, cb) {
       if (err || stderr) {
         cb(new ImageProcessingFailure());
       } else {
-      Fs.readFile(merged.path, function (err, buf) {
+        Fs.readFile(merged.path, function (err, buf) {
           cb(err, buf);
           async.each([file1.path, file2.path, merged.path], Fs.unlink);
         });
@@ -273,48 +273,5 @@ exports.generateThumbnail = function (buffer, size, cb) {
         });
       }
     });
-  });
-};
-
-/**
-  * Takes an image and converts it to a PDF.
-  * Returns a buffer of a PDF of the Image.
-  * @author - Amrit Ayalur
-  * @param {Buffer} image - Image buffer
-  * @param {Number} dpi - Desired DPI for the result PDF.
-  */
-exports.imageToPdf = function (image, dpi, cb) {
-
-  function generatePdf (ext) {
-    async.parallel({
-      infile: exports.writeTemp(image,
-        {prefix: 'temp', suffix: '.' + ext}),
-      outfile: exports.writeTemp(new Buffer(0),
-        {prefix: 'temp', suffix: '.pdf'})
-    }, function (err, res) {
-      var infile = res.infile;
-      var outfile = res.outfile;
-      var cmd = 'convert' + ' ' + infile.path + ' ' +
-       '-quality 100 -units PixelsPerInch -density ' +
-        dpi + 'x' + dpi + ' ' + outfile.path;
-      exec(cmd, function (err, stdout, stderr) {
-        if (err || stderr) {
-          cb(err);
-        } else {
-          Fs.readFile(outfile.path, function (err, buf) {
-            cb(err, buf);
-            async.each([infile.path, outfile.path], Fs.unlink);
-          });
-        }
-      });
-    });
-  }
-
-  exports.getMetaData(image, function (err, res) {
-    if (err) {
-      cb(err);
-    } else {
-      generatePdf(res.fileType);
-    }
   });
 };
