@@ -237,7 +237,8 @@ describe('file library', function () {
     });
 
     it('should error on invalid input', function (done) {
-      return Massage.generateThumbnail(new Buffer('asdf'), '300', function (err) {
+      return Massage.generateThumbnail(
+        new Buffer('asdf'), '300', function (err) {
         expect(err).to.exist;
         done();
       });
@@ -256,7 +257,7 @@ describe('file library', function () {
     });
 
     it('should error with bad input', function (done) {
-      Massage.burstPdf('asdfasdf', function (err, bufs) {
+      Massage.burstPdf('asdfasdf', function (err) {
         expect(err).to.exist;
         done();
       });
