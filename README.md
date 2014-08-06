@@ -57,3 +57,7 @@ Always returns an array, even if there's just one page in the PDF.
 #####`generateThumbnail( [Buffer pdf], [Number size] )` -> `Buffer pdf`
 
 Return a copy of the image resized to SIZE% of its original size.
+
+#####`imageToPdf( [Buffer image], [Number dpi] )` -> `Buffer pdf`
+
+Converts an image to a PDF with given DPI.
