@@ -42,7 +42,7 @@ describe('file library', function () {
     it('should fail with an invalid file type', function (done) {
       var filePath = __dirname + '/assets/8.5x11.docx';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.getMetaData(testFile, function (err) {
+        return Massage.getMetaData(testFile, function (err) {
           expect(err).to.exist;
           done();
         });
@@ -68,7 +68,7 @@ describe('file library', function () {
     it('should fail with non-url', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
       return Fs.readFile(filePath, function (err, buffer) {
-        Massage.validateUrl(buffer, function (err) {
+        return Massage.validateUrl(buffer, function (err) {
           expect(err).to.exist;
           done();
         });
@@ -87,7 +87,7 @@ describe('file library', function () {
     it('should return a buffer unmodified', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.getBuffer(testFile, function (err, file) {
+        return Massage.getBuffer(testFile, function (err, file) {
           expect(file instanceof Buffer).to.eql(true);
           done();
         });
@@ -95,7 +95,7 @@ describe('file library', function () {
     });
 
     it('should download file and return buffer', function (done) {
-      Massage.getBuffer('https://www.lob.com/test.pdf', function (err, file) {
+      return Massage.getBuffer('https://www.lob.com/test.pdf', function (err, file) {
         expect(file instanceof Buffer).to.eql(true);
         done();
       });
@@ -118,7 +118,7 @@ describe('file library', function () {
 
   describe('merge', function () {
     it('should combine two files', function (done) {
-      async.parallel({
+      return async.parallel({
         file1: function (done) {
           Fs.readFile(__dirname + '/assets/4x6.pdf', done);
         },
@@ -126,8 +126,8 @@ describe('file library', function () {
           Fs.readFile(__dirname + '/assets/4x6.pdf', done);
         }
       }, function (err, res) {
-        Massage.merge(res.file1, res.file2, function (err, merged) {
-          async.parallel({
+        return Massage.merge(res.file1, res.file2, function (err, merged) {
+          return async.parallel({
             file1: function (done) {
               Massage.getMetaData(res.file1, done);
             },
@@ -164,7 +164,6 @@ describe('file library', function () {
               {fileType: 'PDF', width: 4, length: 6, numPages: 1}
             );
             done();
-            return;
           });
         });
       });
@@ -176,7 +175,6 @@ describe('file library', function () {
         return Massage.imageToPdf(testFile, '300', function (err) {
           expect(err).to.exist;
           done();
-          return;
         });
       });
     });
@@ -184,7 +182,7 @@ describe('file library', function () {
     it('should error with bad input', function (done) {
       var filePath = __dirname + '/assets/1200x1800.png';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.imageToPdf(testFile, 'lob', function (err) {
+        return Massage.imageToPdf(testFile, 'lob', function (err) {
           expect(err).to.exist;
           done();
         });
@@ -196,8 +194,8 @@ describe('file library', function () {
     it('should rotate a PDF and return buffer', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.rotatePdf(testFile, 90, function (err, buf) {
-          Massage.getMetaData(buf, function (err, data) {
+        return Massage.rotatePdf(testFile, 90, function (err, buf) {
+          return Massage.getMetaData(buf, function (err, data) {
             expect(data)
             .to.eql({fileType: 'PDF', width: 4, length: 6, numPages: 1});
             done();
@@ -216,7 +214,7 @@ describe('file library', function () {
     it('should error when an invalid degrees is given', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.rotatePdf(testFile, 33, function (err) {
+        return Massage.rotatePdf(testFile, 33, function (err) {
           expect(err).to.exist;
           done();
         });
@@ -228,7 +226,7 @@ describe('file library', function () {
     it('should generate a png with valid input', function (done) {
       var filePath = __dirname + '/assets/4x6.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.generateThumbnail(testFile, '300', function (err, thumb) {
+        return Massage.generateThumbnail(testFile, '300', function (err, thumb) {
           expect(sizeOf(thumb).height).to.eql(200);
           expect(sizeOf(thumb).width).to.eql(300);
           done();
@@ -249,7 +247,7 @@ describe('file library', function () {
     it('should burst a pdf into pages', function (done) {
       var filePath = __dirname + '/assets/4x6_twice.pdf';
       return Fs.readFile(filePath, function (err, testFile) {
-        Massage.burstPdf(testFile, function (err, bufs) {
+        return Massage.burstPdf(testFile, function (err, bufs) {
           expect(bufs).to.have.length(2);
           done();
         });
@@ -257,7 +255,7 @@ describe('file library', function () {
     });
 
     it('should error with bad input', function (done) {
-      Massage.burstPdf('asdfasdf', function (err) {
+      return Massage.burstPdf('asdfasdf', function (err, bufs) {
         expect(err).to.exist;
         done();
       });

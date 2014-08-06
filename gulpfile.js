@@ -78,7 +78,6 @@ gulp.task('test', ['lint', 'style', 'cover'], function () {
     .pipe(plugins.mocha({reporter: 'spec', timeout: 15000, grep: argv.grep}))
     .on('error', function (error) {
       plugins.util.log(plugins.util.colors.red(error.message));
-      process.exit(1);
     })
     .pipe(plugins.istanbul.writeReports(options))
     .pipe(plugins.exit());

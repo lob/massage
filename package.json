@@ -4,7 +4,7 @@
   "description": "functions to help you interact with files",
   "main": "./massage.js",
   "scripts": {
-    "test": "gulp test",
+    "test": "mocha --reporter spec",
     "enforce": "gulp enforce",
     "lint": "gulp lint",
     "style": "gulp style",
