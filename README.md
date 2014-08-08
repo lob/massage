@@ -13,7 +13,11 @@
 ## Dependencies
 ###ImageMagick and GhostScript
 ```bash
-  brew install imagemagick ghostscript
+  osx> brew install imagemagick ghostscript
+```
+
+```bash
+  ubuntu> sudo apt-get install imagemagick ghostscript pdftk
 ```
 
 ###PDFtk
@@ -23,7 +27,7 @@ Go to http://www.pdflabs.com/tools/pdftk-server/ for official installation of PD
 
 #####`getMetaData( [Buffer image] )` -> `Object`
 
-Returns an object with metadata about the buffer, as told by ImageMagick.
+Returns a promise of an object with metadata about the buffer, as told by ImageMagick.
 ```
 {
   fileType: 'pdf|png|jpg|etc...' [String]
@@ -32,39 +36,63 @@ Returns an object with metadata about the buffer, as told by ImageMagick.
   numPages: number of images in the image sequence (number of pages in the PDF) [Number]
 }
 ```
+If ImageMagick's `identify` tool can't handle the passed buffer, then the promise
+is rejected.
 
 #####`validateUrl( [String url] )` -> `String`
 
-Throws an error if the given URL is not valid. Otherwise returns a promise
-which resolves to the url.
+Returns a promise that is rejected if the given URL is not valid. Otherwise it
+resolves to the URL.
 
-#####`getBuffer( [String url|Buffer buffer] )` -> `Buffer`
+#####`getBuffer( [String url|Buffer buffer|Object options] )` -> `Buffer`
 
-Takes either a buffer or URL and return a Promise that resolves to a buffer
-which contains either the passed buffer or the result of HTTP GET'ing the URL.
+Takes a buffer, a URL, or an options object and return a Promise that resolves
+to a buffer. If you pass an options object it is passed into the `request.js`
+constructor, but if you don't supply a `method`, `timeout`, or `encoding`, they
+default to `GET`, `10000`, and `null` respectively. The promise always resolves
+to a buffer which is either the passed buffer or the result of `request.js`
+GET'ing the URL.
+
+If the URL is invalid or `request.js` fails, the promise is rejected.
 
 #####`merge( [Buffer pdf], [Buffer pdf] )` -> `Buffer pdf`
 
-Merge two PDFs using pdftk and returns a promise which resolves to the
+Merge two PDFs using `pdftk` and returns a promise which resolves to the
 resulting rotated pdf (as a buffer.)
+
+Could be rejected if `pdftk` chokes on the buffer, or you don't have enough
+disk space to write the results.
 
 #####`rotatePdf( [Buffer pdf], [Number degrees] )` -> `Buffer pdf`
 
 Returns a promise which resolves to the pdf, rotated by the given number of
-degrees.
+degrees. Backed by ImageMagick `convert`.
+
+Could be rejected if `convert` chokes on the buffer, or you don't have enough
+disk space to write the results.
 
 #####`burstPdf( [Buffer pdf] )` -> `[pdf Buffer, pdf Buffer, ...]`
 
 Takes a multi-page PDF buffer and returns a promise of an array of 1-page pdf
-buffers. Always resolves to an array, even if there's just one page in the PDF.
+buffers. Backed by `pdftk`'s `burst` utility. Always resolves to an array,
+even if there's just one page in the PDF.
+
+Could be rejected if `pdftk` chokes on the buffer, or you don't have enough
+disk space to write the results.
 
 #####`generateThumbnail( [Buffer pdf], [Number size] )` -> `Buffer pdf`
 
 Returns a promise that resolves to a copy of the image resized to SIZE% of its
-original size.
+original size. Backed by ImageMagick `convert`.
+
+Could be rejected if `convert` chokes on the buffer, or you don't have enough
+disk space to write the results.
 
 #####`imageToPdf( [Buffer image], [Number dpi] )` -> `Buffer pdf`
 
 Takes a buffer containing an image file and converts it to pdf format
 at the specified DPI. Returns a promise that resolves to a buffer containing the
-pdf file.
+pdf file. Backed by ImageMagick `convert`.
+
+Could be rejected if `convert` chokes on the buffer, or you don't have enough
+disk space to write the results.
