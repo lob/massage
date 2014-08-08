@@ -243,18 +243,18 @@ exports.burstPdf = function (pdf) {
 };
 
 /**
-  * Takes a pdf and resizes it to thumbnail size.
+  * Takes a png and resizes it to thumbnail size.
   * Returns a buffer of a PNG of the thumbnail.
   * @author - Grayson Chao
-  * @param {Buffer} pdf PDF file buffer
+  * @param {Buffer} png PNG file buffer
   * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
   */
-exports.generateThumbnail = function (pdf, size) {
-  var pdfHash  = getUUID() + sha1(pdf).toString().slice(0, 10);
-  var filePath = '/tmp/thumb_' + pdfHash + '_in.pdf';
-  var outPath  = '/tmp/thumb_' + pdfHash + '_out.png';
+exports.generateThumbnail = function (png, size) {
+  var pngHash  = getUUID() + sha1(png).toString().slice(0, 10);
+  var filePath = '/tmp/thumb_' + pngHash + '_in.png';
+  var outPath  = '/tmp/thumb_' + pngHash + '_out.png';
 
-  return pwrite(filePath, pdf)
+  return pwrite(filePath, png)
   .then(function () {
     var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
       filePath + ' ' + outPath;

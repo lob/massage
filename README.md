@@ -80,7 +80,7 @@ even if there's just one page in the PDF.
 Could be rejected if `pdftk` chokes on the buffer, or you don't have enough
 disk space to write the results.
 
-#####`generateThumbnail( [Buffer pdf], [Number size] )` -> `Buffer pdf`
+#####`generateThumbnail( [Buffer png], [Number size] )` -> `Buffer png`
 
 Returns a promise that resolves to a copy of the image resized to SIZE% of its
 original size. Backed by ImageMagick `convert`.

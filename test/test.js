@@ -153,8 +153,8 @@ describe('file library', function () {
   });
 
   describe('generateThumbnail', function () {
-    it('should generate a pdf with valid input', function () {
-      var filePath = __dirname + '/assets/4x6.pdf';
+    it('should generate a png with valid input', function () {
+      var filePath = __dirname + '/assets/1200x1800.png';
       var testFile = Fs.readFileSync(filePath);
       return Massage.generateThumbnail(testFile, '200x300')
       .then(function (thumb) {
