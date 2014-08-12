@@ -200,6 +200,15 @@ describe('file library', function () {
         return expect(files).to.have.length(2);
       });
     });
+
+    it('should burst a stream pdf into pages', function () {
+      var filePath = __dirname + '/assets/4x6_twice.pdf';
+      var testFile = fs.createReadStream(filePath);
+      return Massage.burstPdf(testFile)
+      .then(function (files) {
+        return expect(files).to.have.length(2);
+      });
+    });
   });
 
   describe('imageToPdf', function () {

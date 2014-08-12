@@ -256,11 +256,14 @@ exports.rotatePdf = function (file, degrees) {
   * Takes a multipage pdf buffer and returns an array of 1-page pdf buffers
   * (Sorted by page number)
   * @author - Grayson Chao
-  * @param {Buffer} pdf PDF file buffer
+  * @param {Buffer/Stream} file PDF file buffer or stream
   */
-exports.burstPdf = function (pdf) {
+exports.burstPdf = function (file) {
   var filePath = '/tmp/burst_' + getUUID().slice(0, 10);
-  return pwrite(filePath, pdf)
+  return Promise.resolve(
+    file instanceof Buffer ? pwrite(filePath, file) :
+      internals.writeStreamToPath(file, filePath)
+  )
   .then(function () {
     var cmd = 'pdftk ' + filePath + ' burst output ' + filePath + '_page_%03d';
     return pexec(cmd);
@@ -278,13 +281,10 @@ exports.burstPdf = function (pdf) {
     this.outFiles = filenames.concat(filePath);
   })
   .map(function (filename) {
-    return pread(filename)
-    .then(function (page) {
-      return {
-        page: parseInt(filename.slice(filename.length - 3)),
-        file: page
-      };
-    });
+    return {
+      page: parseInt(filename.slice(filename.length - 3)),
+      file: fs.createReadStream(filename)
+    };
   })
   .finally(function () {
     return Promise.resolve(this.outFiles)
