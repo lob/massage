@@ -4,18 +4,20 @@ var spawn       = require('child_process').spawn;
 var exec        = require('child_process').exec;
 var Streamifier = require('streamifier');
 var Url         = require('url');
-var Fs          = require('fs');
+var fs          = require('fs');
 var sha1        = require('sha1');
 var glob        = require('glob');
 var _           = require('lodash');
 var uuid        = require('uuid');
 
 /* Promisify core API methods */
-var pwrite  = Promise.promisify(Fs.writeFile);
-var pread   = Promise.promisify(Fs.readFile);
-var punlink = Promise.promisify(Fs.unlink);
+var pwrite  = Promise.promisify(fs.writeFile);
+var punlink = Promise.promisify(fs.unlink);
 var pexec   = Promise.promisify(exec);
 var pglob   = Promise.promisify(glob);
+var preq    = Promise.promisify(request);
+
+var internals = {};
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -56,12 +58,12 @@ var getUUID = function () {
 
 /**
 * Takes a buffer and returns the relevant metadata
-* @param {Buffer} buffer - readable file stream
+* @author Peter Nagel
+* @param {Stream/Buffer} file - readable file stream or buffer
 */
-exports.getMetaData = function (buffer) {
-
+exports.getMetaData = function (file) {
+  file = (file instanceof Buffer) ? Streamifier.createReadStream(file) : file;
   return new Promise(function (resolve, reject) {
-    var fileStream = Streamifier.createReadStream(buffer);
     var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
       '-']);
     identify.stdout.on('data', function (data) {
@@ -81,7 +83,7 @@ exports.getMetaData = function (buffer) {
         reject(new InvalidPdfFile());
       }
     });
-    fileStream.pipe(identify.stdin);
+    file.pipe(identify.stdin);
   });
 };
 
@@ -128,8 +130,6 @@ exports.getBuffer = Promise.method(function (params) {
     }
   });
 
-  var preq = Promise.promisify(request);
-
   return preq(params)
   .then(function (res) {
     return res[0].body;
@@ -140,18 +140,71 @@ exports.getBuffer = Promise.method(function (params) {
 });
 
 /**
+ * @author Peter Nagel
+ * @param {String} url
+ * @returns {Stream}
+ */
+exports.getStream = function (url) {
+  return preq({
+    method: 'HEAD',
+    url: url
+  })
+  .then(function (res) {
+    if (res[0].statusCode !== 200) {
+      throw new InvalidFileUrl();
+    } else {
+      return request(url);
+    }
+  })
+  .catch(function () {
+    throw new InvalidFileUrl();
+  });
+};
+
+/**
+ * Write a stream to specified path
+ * @author Peter Nagel
+ * @param {Stream} stream stream to write
+ * @param {String} filePath path to write file
+ * @returns {Promise}
+ */
+internals.writeStreamToPath = function (stream, filePath) {
+  return new Promise(function (resolve, reject) {
+    var writeStream = fs.createWriteStream(filePath);
+
+    stream.on('close', function () {
+      return resolve();
+    });
+
+    /* istanbul ignore next */
+    writeStream.on('error', function (err) {
+      reject(err);
+    });
+
+   /* istanbul ignore next */
+    stream.on('error', function (err) {
+      reject(err);
+    });
+
+    stream.pipe(writeStream);
+  });
+};
+
+/**
 * Combine two files into a single a file
-* @param {Buffer} buffer1 - first file to combine
-* @param {Buffer} buffer2 - second file to combine
+* @param {Buffer/Stream} file1 - first file to combine
+* @param {Buffer/Stream} file2 - second file to combine
 */
-exports.merge = function (buffer1, buffer2) {
+exports.merge = function (file1, file2) {
   var timestamp      = getUUID().slice(0, 10);
   var file1Path      = '/tmp/merge_' + timestamp + '_in1';
   var file2Path      = '/tmp/merge_' + timestamp + '_in2';
   var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
   return Promise.all([
-    pwrite(file1Path, buffer1),
-    pwrite(file2Path, buffer2)
+    file1 instanceof Buffer ? pwrite(file1Path, file1) :
+      internals.writeStreamToPath(file1, file1Path),
+    file2 instanceof Buffer ? pwrite(file2Path, file2) :
+      internals.writeStreamToPath(file2, file2Path)
   ])
   .then(function () {
     var cmd = 'pdftk ' + file1Path + ' ' + file2Path +
@@ -159,7 +212,7 @@ exports.merge = function (buffer1, buffer2) {
     return pexec(cmd);
   })
   .then(function () {
-    return pread(mergedFilePath);
+    return fs.createReadStream(mergedFilePath);
   })
   .finally(function () {
     return Promise.all([
@@ -171,26 +224,29 @@ exports.merge = function (buffer1, buffer2) {
 };
 
 /**
-* Takes a PDF buffer, rotates it clockwise and returns as buffer
-* @param {Buffer} buffer - PDF file buffer
+* Takes a PDF buffer, rotates it clockwise and returns as stream
+* @param {Buffer/Stream} file - PDF file buffer or stream
 * @param {number} degrees - degrees to rotate PDF
 */
-exports.rotatePdf = function (buffer, degrees) {
+exports.rotatePdf = function (file, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Promise.reject(new InvalidRotationDegrees());
   }
-  var pdfHash  = getUUID() + sha1(buffer).slice(0, 10);
+  var pdfHash  = getUUID() + sha1(file).slice(0, 10);
   var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
   var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
 
-  return pwrite(filePath, buffer)
+  return Promise.resolve(
+    file instanceof Buffer ? pwrite(filePath, file) :
+      internals.writeStreamToPath(file, filePath)
+  )
   .then(function () {
     var cmd = 'convert -rotate ' + degrees + ' -density 300 ' +
     filePath + ' ' + outPath;
     return pexec(cmd);
   })
   .then(function () {
-    return pread(outPath);
+    return fs.createReadStream(outPath);
   })
   .finally(function () {
     return Promise.all([
@@ -204,11 +260,14 @@ exports.rotatePdf = function (buffer, degrees) {
   * Takes a multipage pdf buffer and returns an array of 1-page pdf buffers
   * (Sorted by page number)
   * @author - Grayson Chao
-  * @param {Buffer} pdf PDF file buffer
+  * @param {Buffer/Stream} file PDF file buffer or stream
   */
-exports.burstPdf = function (pdf) {
+exports.burstPdf = function (file) {
   var filePath = '/tmp/burst_' + getUUID().slice(0, 10);
-  return pwrite(filePath, pdf)
+  return Promise.resolve(
+    file instanceof Buffer ? pwrite(filePath, file) :
+      internals.writeStreamToPath(file, filePath)
+  )
   .then(function () {
     var cmd = 'pdftk ' + filePath + ' burst output ' + filePath + '_page_%03d';
     return pexec(cmd);
@@ -226,13 +285,10 @@ exports.burstPdf = function (pdf) {
     this.outFiles = filenames.concat(filePath);
   })
   .map(function (filename) {
-    return pread(filename)
-    .then(function (page) {
-      return {
-        page: parseInt(filename.slice(filename.length - 3)),
-        file: page
-      };
-    });
+    return {
+      page: parseInt(filename.slice(filename.length - 3)),
+      file: fs.createReadStream(filename)
+    };
   })
   .finally(function () {
     return Promise.resolve(this.outFiles)
@@ -243,39 +299,10 @@ exports.burstPdf = function (pdf) {
 };
 
 /**
-  * Takes a png and resizes it to thumbnail size.
-  * Returns a buffer of a PNG of the thumbnail.
-  * @author - Grayson Chao
-  * @param {Buffer} png PNG file buffer
-  * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
-  */
-exports.generateThumbnail = function (png, size) {
-  var pngHash  = getUUID() + sha1(png).toString().slice(0, 10);
-  var filePath = '/tmp/thumb_' + pngHash + '_in.png';
-  var outPath  = '/tmp/thumb_' + pngHash + '_out.png';
-
-  return pwrite(filePath, png)
-  .then(function () {
-    var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
-      filePath + ' ' + outPath;
-    return pexec(cmd);
-  })
-  .then(function () {
-    return pread(outPath); // actual return value when resolved
-  })
-  .finally(function () {
-    return Promise.all([
-      punlink(outPath),
-      punlink(filePath)
-    ]);
-  });
-};
-
-/**
   * Takes an image and converts it to a PDF.
   * Returns a buffer of a PDF of the Image.
   * @author - Amrit Ayalur
-  * @param {Buffer} image - Image buffer
+  * @param {Buffer/Stream} image - Image buffer or stream
   * @param {Number} dpi - Desired DPI for the result PDF.
   */
 exports.imageToPdf = function (image, dpi) {
@@ -284,7 +311,10 @@ exports.imageToPdf = function (image, dpi) {
     exports.getMetaData(image).fileType;
   var outPath = '/tmp/' + imageHash + '.pdf';
 
-  return pwrite(filePath, image)
+  return Promise.resolve(
+    image instanceof Buffer ? pwrite(filePath, image) :
+      internals.writeStreamToPath(image, filePath)
+  )
   .then (function () {
     var cmd = 'convert' + ' ' + filePath + ' ' +
      '-quality 100 -units PixelsPerInch -density ' +
@@ -292,7 +322,7 @@ exports.imageToPdf = function (image, dpi) {
     return pexec(cmd);
   })
   .then(function () {
-    return pread(outPath);
+    return fs.createReadStream(outPath);
   })
   .finally(function () {
     return Promise.all([

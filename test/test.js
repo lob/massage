@@ -1,7 +1,7 @@
 var chai    = require('chai');
 var expect  = chai.expect;
 var Massage = require('../massage');
-var Fs      = require('fs');
+var fs      = require('fs');
 var Promise = require('bluebird');
 
 chai
@@ -12,7 +12,15 @@ describe('file library', function () {
   describe('getMetaData', function () {
     it('should be able to handle a buffer', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
+      return expect(Massage.getMetaData(testFile)).to.eventually.eql(
+        {fileType: 'PDF', width: 6, length: 4, numPages: 1}
+      );
+    });
+
+    it('should be able to handle a stream', function () {
+      var filePath = __dirname + '/assets/4x6.pdf';
+      var testFile = fs.createReadStream(filePath);
       return expect(Massage.getMetaData(testFile)).to.eventually.eql(
         {fileType: 'PDF', width: 6, length: 4, numPages: 1}
       );
@@ -25,7 +33,7 @@ describe('file library', function () {
 
     it('should fail with an invalid file type', function () {
       var filePath = __dirname + '/assets/8.5x11.docx';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
       return expect(Massage.getMetaData(testFile)).to.be.rejected;
     });
   });
@@ -38,7 +46,7 @@ describe('file library', function () {
 
     it('should fail with non-url', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
-      Fs.readFile(filePath, function (err, buffer) {
+      fs.readFile(filePath, function (err, buffer) {
         return expect(Massage.validateUrl(buffer))
           .to.be.rejected;
       });
@@ -53,7 +61,7 @@ describe('file library', function () {
   describe('getBuffer', function () {
     it('should return a buffer unmodified', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
 
       return Massage.getBuffer(testFile)
       .then(function (file) {
@@ -85,10 +93,33 @@ describe('file library', function () {
     });
   });
 
+  describe('getStream', function () {
+    it('should not override url', function () {
+      return Massage.getStream('https://www.lob.com/test.pdf')
+      .then(function (file) {
+        return expect(file.pipe instanceof Function).to.eql(true);
+      });
+    });
+
+    it('should throw an error for an invlaid url', function () {
+      return expect(Massage.getStream('test.pdf')).to.be.rejected;
+    });
+
+    it('should throw an error when the url is wrong', function () {
+      return expect(Massage.getStream('https://www.asdflkj.com'))
+      .to.be.rejected;
+    });
+
+    it('should throw an error when not authorized', function () {
+      return expect(Massage.getStream('https://api.lob.com/'))
+        .to.be.rejected;
+    });
+  });
+
   describe('merge', function () {
-    it('should combine two files', function () {
-      var file1 = Fs.readFileSync(__dirname + '/assets/4x6.pdf');
-      var file2 = Fs.readFileSync(__dirname + '/assets/4x6.pdf');
+    it('should combine two files from buffers', function () {
+      var file1 = fs.readFileSync(__dirname + '/assets/4x6.pdf');
+      var file2 = fs.readFileSync(__dirname + '/assets/4x6.pdf');
 
       return Massage.merge(file1, file2)
       .then (function (mergedFile) {
@@ -103,12 +134,44 @@ describe('file library', function () {
           .to.eql(mergedFile.numPages);
       });
     });
+
+    it('should combine two files from streams', function () {
+      var file1 = fs.createReadStream(__dirname + '/assets/4x6.pdf');
+      var file2 = fs.createReadStream(__dirname + '/assets/4x6.pdf');
+
+      return Massage.merge(file1, file2)
+      .then (function (mergedFile) {
+        return Promise.all([
+          Massage.getMetaData(
+            fs.createReadStream(__dirname + '/assets/4x6.pdf')),
+          Massage.getMetaData(
+            fs.createReadStream(__dirname + '/assets/4x6.pdf')),
+          Massage.getMetaData(mergedFile)
+        ]);
+      })
+      .spread(function (file1, file2, mergedFile) {
+        return expect(file1.numPages + file2.numPages)
+          .to.eql(mergedFile.numPages);
+      });
+    });
+
   });
 
   describe('rotatePdf', function () {
-    it('should rotate a PDF and return buffer', function () {
+    it('should rotate a PDF', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
+      return Massage.rotatePdf(testFile, 90)
+      .then(function (data) {
+        return expect(Massage.getMetaData(data)).to.eventually.eql(
+          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+        );
+      });
+    });
+
+    it('should rotate a PDF from stream', function () {
+      var filePath = __dirname + '/assets/4x6.pdf';
+      var testFile = fs.createReadStream(filePath);
       return Massage.rotatePdf(testFile, 90)
       .then(function (data) {
         return expect(Massage.getMetaData(data)).to.eventually.eql(
@@ -123,7 +186,7 @@ describe('file library', function () {
 
     it('should error when an invalid degrees is given', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
       return expect(Massage.rotatePdf(testFile, 33)).to.be.rejected;
     });
   });
@@ -131,7 +194,16 @@ describe('file library', function () {
   describe('burstPdf', function () {
     it('should burst a pdf into pages', function () {
       var filePath = __dirname + '/assets/4x6_twice.pdf';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
+      return Massage.burstPdf(testFile)
+      .then(function (files) {
+        return expect(files).to.have.length(2);
+      });
+    });
+
+    it('should burst a stream pdf into pages', function () {
+      var filePath = __dirname + '/assets/4x6_twice.pdf';
+      var testFile = fs.createReadStream(filePath);
       return Massage.burstPdf(testFile)
       .then(function (files) {
         return expect(files).to.have.length(2);
@@ -142,25 +214,23 @@ describe('file library', function () {
   describe('imageToPdf', function () {
     it('should convert an image to a pdf', function () {
       var filePath = __dirname + '/assets/1200x1800.png';
-      var testFile = Fs.readFileSync(filePath);
+      var testFile = fs.readFileSync(filePath);
       return Massage.imageToPdf(testFile, '300')
       .then(function (pdf) {
-        expect(Massage.getMetaData(pdf)).to.eventually.eql(
+        return expect(Massage.getMetaData(pdf)).to.eventually.eql(
           {fileType: 'PDF', width: 4, length: 6, numPages: 1}
        );
       });
     });
-  });
 
-  describe('generateThumbnail', function () {
-    it('should generate a png with valid input', function () {
+    it('should convert a stream image to a pdf', function () {
       var filePath = __dirname + '/assets/1200x1800.png';
-      var testFile = Fs.readFileSync(filePath);
-      return Massage.generateThumbnail(testFile, '200x300')
-      .then(function (thumb) {
-        expect(Massage.getMetaData(thumb)).to.eventually.eql(
-          {fileType: 'PNG', width: 200, length: 300, numPages: 1}
-        );
+      var testFile = fs.createReadStream(filePath);
+      return Massage.imageToPdf(testFile, '300')
+      .then(function (pdf) {
+        return expect(Massage.getMetaData(pdf)).to.eventually.eql(
+          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+       );
       });
     });
   });
