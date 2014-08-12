@@ -117,7 +117,7 @@ describe('file library', function () {
   });
 
   describe('merge', function () {
-    it('should combine two files', function () {
+    it('should combine two files from buffers', function () {
       var file1 = fs.readFileSync(__dirname + '/assets/4x6.pdf');
       var file2 = fs.readFileSync(__dirname + '/assets/4x6.pdf');
 
@@ -134,6 +134,27 @@ describe('file library', function () {
           .to.eql(mergedFile.numPages);
       });
     });
+
+    it('should combine two files from streams', function () {
+      var file1 = fs.createReadStream(__dirname + '/assets/4x6.pdf');
+      var file2 = fs.createReadStream(__dirname + '/assets/4x6.pdf');
+
+      return Massage.merge(file1, file2)
+      .then (function (mergedFile) {
+        return Promise.all([
+          Massage.getMetaData(
+            fs.createReadStream(__dirname + '/assets/4x6.pdf')),
+          Massage.getMetaData(
+            fs.createReadStream(__dirname + '/assets/4x6.pdf')),
+          Massage.getMetaData(mergedFile)
+        ]);
+      })
+      .spread(function (file1, file2, mergedFile) {
+        return expect(file1.numPages + file2.numPages)
+          .to.eql(mergedFile.numPages);
+      });
+    });
+
   });
 
   describe('rotatePdf', function () {

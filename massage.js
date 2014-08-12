@@ -4,20 +4,21 @@ var spawn       = require('child_process').spawn;
 var exec        = require('child_process').exec;
 var Streamifier = require('streamifier');
 var Url         = require('url');
-var Fs          = require('fs');
+var fs          = require('fs');
 var sha1        = require('sha1');
 var glob        = require('glob');
 var _           = require('lodash');
 var uuid        = require('uuid');
 
 /* Promisify core API methods */
-var pwrite  = Promise.promisify(Fs.writeFile);
-var pread   = Promise.promisify(Fs.readFile);
-var punlink = Promise.promisify(Fs.unlink);
+var pwrite  = Promise.promisify(fs.writeFile);
+var pread   = Promise.promisify(fs.readFile);
+var punlink = Promise.promisify(fs.unlink);
 var pexec   = Promise.promisify(exec);
 var pglob   = Promise.promisify(glob);
 var preq    = Promise.promisify(request);
 
+var internals = {};
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -162,18 +163,44 @@ exports.getStream = function (url) {
 };
 
 /**
+ * Write a stream to specified path
+ * @author Peter Nagel
+ * @param {Stream} stream stream to write
+ * @param {String} filePath path to write file
+ * @returns {Promise}
+ */
+internals.writeStreamToPath = function (stream, filePath) {
+  return new Promise(function (resolve, reject) {
+    var writeStream = fs.createWriteStream(filePath);
+
+    stream.on('close', function () {
+      return resolve();
+    });
+
+    /* istanbul ignore next */
+    writeStream.on('error', function (err) {
+      reject(err);
+    });
+
+    stream.pipe(writeStream);
+  });
+};
+
+/**
 * Combine two files into a single a file
-* @param {Buffer} buffer1 - first file to combine
-* @param {Buffer} buffer2 - second file to combine
+* @param {Buffer/Stream} file1 - first file to combine
+* @param {Buffer/Stream} file2 - second file to combine
 */
-exports.merge = function (buffer1, buffer2) {
+exports.merge = function (file1, file2) {
   var timestamp      = getUUID().slice(0, 10);
   var file1Path      = '/tmp/merge_' + timestamp + '_in1';
   var file2Path      = '/tmp/merge_' + timestamp + '_in2';
   var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
   return Promise.all([
-    pwrite(file1Path, buffer1),
-    pwrite(file2Path, buffer2)
+    file1 instanceof Buffer ? pwrite(file1Path, file1) :
+      internals.writeStreamToPath(file1, file1Path),
+    file2 instanceof Buffer ? pwrite(file2Path, file2) :
+      internals.writeStreamToPath(file2, file2Path)
   ])
   .then(function () {
     var cmd = 'pdftk ' + file1Path + ' ' + file2Path +
@@ -181,7 +208,7 @@ exports.merge = function (buffer1, buffer2) {
     return pexec(cmd);
   })
   .then(function () {
-    return pread(mergedFilePath);
+    return fs.createReadStream(mergedFilePath);
   })
   .finally(function () {
     return Promise.all([
