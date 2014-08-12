@@ -223,17 +223,4 @@ describe('file library', function () {
       });
     });
   });
-
-  describe('generateThumbnail', function () {
-    it('should generate a png with valid input', function () {
-      var filePath = __dirname + '/assets/1200x1800.png';
-      var testFile = fs.readFileSync(filePath);
-      return Massage.generateThumbnail(testFile, '200x300')
-      .then(function (thumb) {
-        expect(Massage.getMetaData(thumb)).to.eventually.eql(
-          {fileType: 'PNG', width: 200, length: 300, numPages: 1}
-        );
-      });
-    });
-  });
 });

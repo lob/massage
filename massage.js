@@ -295,35 +295,6 @@ exports.burstPdf = function (file) {
 };
 
 /**
-  * Takes a png and resizes it to thumbnail size.
-  * Returns a buffer of a PNG of the thumbnail.
-  * @author - Grayson Chao
-  * @param {Buffer} png PNG file buffer
-  * @param {Number} size an ImageMagick geometry string: width[xheight][+offset]
-  */
-exports.generateThumbnail = function (png, size) {
-  var pngHash  = getUUID() + sha1(png).toString().slice(0, 10);
-  var filePath = '/tmp/thumb_' + pngHash + '_in.png';
-  var outPath  = '/tmp/thumb_' + pngHash + '_out.png';
-
-  return pwrite(filePath, png)
-  .then(function () {
-    var cmd = 'convert -density 300x300 -resize ' + size + ' ' +
-      filePath + ' ' + outPath;
-    return pexec(cmd);
-  })
-  .then(function () {
-    return pread(outPath); // actual return value when resolved
-  })
-  .finally(function () {
-    return Promise.all([
-      punlink(outPath),
-      punlink(filePath)
-    ]);
-  });
-};
-
-/**
   * Takes an image and converts it to a PDF.
   * Returns a buffer of a PDF of the Image.
   * @author - Amrit Ayalur
