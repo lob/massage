@@ -181,6 +181,11 @@ internals.writeStreamToPath = function (stream, filePath) {
       reject(err);
     });
 
+   /* istanbul ignore next */
+    stream.on('error', function (err) {
+      reject(err);
+    });
+
     stream.pipe(writeStream);
   });
 };
