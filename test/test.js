@@ -217,7 +217,18 @@ describe('file library', function () {
       var testFile = fs.readFileSync(filePath);
       return Massage.imageToPdf(testFile, '300')
       .then(function (pdf) {
-        expect(Massage.getMetaData(pdf)).to.eventually.eql(
+        return expect(Massage.getMetaData(pdf)).to.eventually.eql(
+          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+       );
+      });
+    });
+
+    it('should convert a stream image to a pdf', function () {
+      var filePath = __dirname + '/assets/1200x1800.png';
+      var testFile = fs.createReadStream(filePath);
+      return Massage.imageToPdf(testFile, '300')
+      .then(function (pdf) {
+        return expect(Massage.getMetaData(pdf)).to.eventually.eql(
           {fileType: 'PDF', width: 4, length: 6, numPages: 1}
        );
       });

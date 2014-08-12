@@ -12,7 +12,6 @@ var uuid        = require('uuid');
 
 /* Promisify core API methods */
 var pwrite  = Promise.promisify(fs.writeFile);
-var pread   = Promise.promisify(fs.readFile);
 var punlink = Promise.promisify(fs.unlink);
 var pexec   = Promise.promisify(exec);
 var pglob   = Promise.promisify(glob);
@@ -298,7 +297,7 @@ exports.burstPdf = function (file) {
   * Takes an image and converts it to a PDF.
   * Returns a buffer of a PDF of the Image.
   * @author - Amrit Ayalur
-  * @param {Buffer} image - Image buffer
+  * @param {Buffer/Stream} image - Image buffer or stream
   * @param {Number} dpi - Desired DPI for the result PDF.
   */
 exports.imageToPdf = function (image, dpi) {
@@ -307,7 +306,10 @@ exports.imageToPdf = function (image, dpi) {
     exports.getMetaData(image).fileType;
   var outPath = '/tmp/' + imageHash + '.pdf';
 
-  return pwrite(filePath, image)
+  return Promise.resolve(
+    image instanceof Buffer ? pwrite(filePath, image) :
+      internals.writeStreamToPath(image, filePath)
+  )
   .then (function () {
     var cmd = 'convert' + ' ' + filePath + ' ' +
      '-quality 100 -units PixelsPerInch -density ' +
@@ -315,7 +317,7 @@ exports.imageToPdf = function (image, dpi) {
     return pexec(cmd);
   })
   .then(function () {
-    return pread(outPath);
+    return fs.createReadStream(outPath);
   })
   .finally(function () {
     return Promise.all([
