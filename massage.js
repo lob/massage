@@ -16,6 +16,8 @@ var pread   = Promise.promisify(Fs.readFile);
 var punlink = Promise.promisify(Fs.unlink);
 var pexec   = Promise.promisify(exec);
 var pglob   = Promise.promisify(glob);
+var preq    = Promise.promisify(request);
+
 
 function InvalidFileUrl () {
   this.name = 'Invalid File URL';
@@ -56,12 +58,12 @@ var getUUID = function () {
 
 /**
 * Takes a buffer and returns the relevant metadata
-* @param {Buffer} buffer - readable file stream
+* @author Peter Nagel
+* @param {Stream/Buffer} file - readable file stream or buffer
 */
-exports.getMetaData = function (buffer) {
-
+exports.getMetaData = function (file) {
+  file = (file instanceof Buffer) ? Streamifier.createReadStream(file) : file;
   return new Promise(function (resolve, reject) {
-    var fileStream = Streamifier.createReadStream(buffer);
     var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
       '-']);
     identify.stdout.on('data', function (data) {
@@ -81,7 +83,7 @@ exports.getMetaData = function (buffer) {
         reject(new InvalidPdfFile());
       }
     });
-    fileStream.pipe(identify.stdin);
+    file.pipe(identify.stdin);
   });
 };
 
@@ -128,8 +130,6 @@ exports.getBuffer = Promise.method(function (params) {
     }
   });
 
-  var preq = Promise.promisify(request);
-
   return preq(params)
   .then(function (res) {
     return res[0].body;
@@ -138,6 +138,28 @@ exports.getBuffer = Promise.method(function (params) {
     throw new InvalidFileUrl();
   });
 });
+
+/**
+ * @author Peter Nagel
+ * @param {String} url
+ * @returns {Stream}
+ */
+exports.getStream = function (url) {
+  return preq({
+    method: 'HEAD',
+    url: url
+  })
+  .then(function (res) {
+    if (res[0].statusCode !== 200) {
+      throw new InvalidFileUrl();
+    } else {
+      return request(url);
+    }
+  })
+  .catch(function () {
+    throw new InvalidFileUrl();
+  });
+};
 
 /**
 * Combine two files into a single a file
