@@ -53,17 +53,21 @@ default to `GET`, `10000`, and `null` respectively. The promise always resolves
 to a buffer which is either the passed buffer or the result of `request.js`
 GET'ing the URL.
 
+#####`getStream( [String url] )` -> `Stream`
+
+Takes a URL determines if it is valid and if so returns a readable stream.
+
 If the URL is invalid or `request.js` fails, the promise is rejected.
 
-#####`merge( [Buffer pdf], [Buffer pdf] )` -> `Buffer pdf`
+#####`merge( [Buffer/Stream pdf], [Buffer/Stream pdf] )` -> `Stream pdf`
 
 Merge two PDFs using `pdftk` and returns a promise which resolves to the
-resulting rotated pdf (as a buffer.)
+resulting rotated pdf (as a stream.)
 
 Could be rejected if `pdftk` chokes on the buffer, or you don't have enough
 disk space to write the results.
 
-#####`rotatePdf( [Buffer pdf], [Number degrees] )` -> `Buffer pdf`
+#####`rotatePdf( [Buffer/Stream pdf], [Number degrees] )` -> `Stream pdf`
 
 Returns a promise which resolves to the pdf, rotated by the given number of
 degrees. Backed by ImageMagick `convert`.
@@ -71,27 +75,19 @@ degrees. Backed by ImageMagick `convert`.
 Could be rejected if `convert` chokes on the buffer, or you don't have enough
 disk space to write the results.
 
-#####`burstPdf( [Buffer pdf] )` -> `[pdf Buffer, pdf Buffer, ...]`
+#####`burstPdf( [Buffer/Stream pdf] )` -> `[Stream]`
 
 Takes a multi-page PDF buffer and returns a promise of an array of 1-page pdf
-buffers. Backed by `pdftk`'s `burst` utility. Always resolves to an array,
+streams. Backed by `pdftk`'s `burst` utility. Always resolves to an array,
 even if there's just one page in the PDF.
 
 Could be rejected if `pdftk` chokes on the buffer, or you don't have enough
 disk space to write the results.
 
-#####`generateThumbnail( [Buffer png], [Number size] )` -> `Buffer png`
-
-Returns a promise that resolves to a copy of the image resized to SIZE% of its
-original size. Backed by ImageMagick `convert`.
-
-Could be rejected if `convert` chokes on the buffer, or you don't have enough
-disk space to write the results.
-
-#####`imageToPdf( [Buffer image], [Number dpi] )` -> `Buffer pdf`
+#####`imageToPdf( [Buffer/Stream image], [Number dpi] )` -> `Stream`
 
 Takes a buffer containing an image file and converts it to pdf format
-at the specified DPI. Returns a promise that resolves to a buffer containing the
+at the specified DPI. Returns a promise that resolves to a stream containing the
 pdf file. Backed by ImageMagick `convert`.
 
 Could be rejected if `convert` chokes on the buffer, or you don't have enough
