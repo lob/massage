@@ -158,9 +158,20 @@ describe('file library', function () {
   });
 
   describe('rotatePdf', function () {
-    it('should rotate a PDF and return buffer', function () {
+    it('should rotate a PDF', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
       var testFile = fs.readFileSync(filePath);
+      return Massage.rotatePdf(testFile, 90)
+      .then(function (data) {
+        return expect(Massage.getMetaData(data)).to.eventually.eql(
+          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+        );
+      });
+    });
+
+    it('should rotate a PDF from stream', function () {
+      var filePath = __dirname + '/assets/4x6.pdf';
+      var testFile = fs.createReadStream(filePath);
       return Massage.rotatePdf(testFile, 90)
       .then(function (data) {
         return expect(Massage.getMetaData(data)).to.eventually.eql(

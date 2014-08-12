@@ -220,26 +220,29 @@ exports.merge = function (file1, file2) {
 };
 
 /**
-* Takes a PDF buffer, rotates it clockwise and returns as buffer
-* @param {Buffer} buffer - PDF file buffer
+* Takes a PDF buffer, rotates it clockwise and returns as stream
+* @param {Buffer/Stream} file - PDF file buffer or stream
 * @param {number} degrees - degrees to rotate PDF
 */
-exports.rotatePdf = function (buffer, degrees) {
+exports.rotatePdf = function (file, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Promise.reject(new InvalidRotationDegrees());
   }
-  var pdfHash  = getUUID() + sha1(buffer).slice(0, 10);
+  var pdfHash  = getUUID() + sha1(file).slice(0, 10);
   var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
   var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
 
-  return pwrite(filePath, buffer)
+  return Promise.resolve(
+    file instanceof Buffer ? pwrite(filePath, file) :
+      internals.writeStreamToPath(file, filePath)
+  )
   .then(function () {
     var cmd = 'convert -rotate ' + degrees + ' -density 300 ' +
     filePath + ' ' + outPath;
     return pexec(cmd);
   })
   .then(function () {
-    return pread(outPath);
+    return fs.createReadStream(outPath);
   })
   .finally(function () {
     return Promise.all([
