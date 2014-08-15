@@ -123,7 +123,7 @@ even if there's just one page in the PDF.
 Could be rejected if `pdftk` chokes on the buffer, or you don't have enough
 disk space to write the results.
 
-#####`imageToPdf( [Buffer/Stream image], [Number dpi] )` -> `Buffer pdf`
+#####`imageToPdf( [Buffer/Stream image], [Number dpi] )` -> `Stream pdf`
 
 Takes a buffer containing an image file and converts it to pdf format
 at the specified DPI. Returns a promise that resolves to a stream containing the
