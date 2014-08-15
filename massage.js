@@ -64,7 +64,7 @@ var getUUID = function () {
 exports.getMetaData = function (file) {
   file = (file instanceof Buffer) ? Streamifier.createReadStream(file) : file;
   return new Promise(function (resolve, reject) {
-    var identify   = spawn('identify',['-format','%m,%[fx:w/72],%[fx:h/72],%n,',
+    var identify   = spawn('identify',['-format','%m,%[fx:w],%[fx:h],%n,',
       '-']);
     identify.stdout.on('data', function (data) {
       var meta = data.toString().split(',');

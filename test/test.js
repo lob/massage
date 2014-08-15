@@ -14,7 +14,7 @@ describe('file library', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
       var testFile = fs.readFileSync(filePath);
       return expect(Massage.getMetaData(testFile)).to.eventually.eql(
-        {fileType: 'PDF', width: 6, length: 4, numPages: 1}
+        {fileType: 'PDF', width: 432, length: 288, numPages: 1}
       );
     });
 
@@ -22,7 +22,7 @@ describe('file library', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
       var testFile = fs.createReadStream(filePath);
       return expect(Massage.getMetaData(testFile)).to.eventually.eql(
-        {fileType: 'PDF', width: 6, length: 4, numPages: 1}
+        {fileType: 'PDF', width: 432, length: 288, numPages: 1}
       );
     });
 
@@ -164,7 +164,7 @@ describe('file library', function () {
       return Massage.rotatePdf(testFile, 90)
       .then(function (data) {
         return expect(Massage.getMetaData(data)).to.eventually.eql(
-          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+          {fileType: 'PDF', width: 288, length: 432, numPages: 1}
         );
       });
     });
@@ -175,7 +175,7 @@ describe('file library', function () {
       return Massage.rotatePdf(testFile, 90)
       .then(function (data) {
         return expect(Massage.getMetaData(data)).to.eventually.eql(
-          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+          {fileType: 'PDF', width: 288, length: 432, numPages: 1}
         );
       });
     });
@@ -218,7 +218,7 @@ describe('file library', function () {
       return Massage.imageToPdf(testFile, '300')
       .then(function (pdf) {
         return expect(Massage.getMetaData(pdf)).to.eventually.eql(
-          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+          {fileType: 'PDF', width: 288, length: 432, numPages: 1}
        );
       });
     });
@@ -229,7 +229,7 @@ describe('file library', function () {
       return Massage.imageToPdf(testFile, '300')
       .then(function (pdf) {
         return expect(Massage.getMetaData(pdf)).to.eventually.eql(
-          {fileType: 'PDF', width: 4, length: 6, numPages: 1}
+          {fileType: 'PDF', width: 288, length: 432, numPages: 1}
        );
       });
     });
