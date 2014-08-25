@@ -123,15 +123,19 @@ describe('file library', function () {
 
       return Massage.merge(file1, file2)
       .then (function (mergedFile) {
+        this.mergedFile = mergedFile;
         return Bluebird.all([
           Massage.getMetaData(file1),
           Massage.getMetaData(file2),
-          Massage.getMetaData(mergedFile)
+          Massage.getMetaData(fs.createReadStream(mergedFile))
         ]);
       })
       .spread(function (file1, file2, mergedFile) {
         return expect(file1.numPages + file2.numPages)
           .to.eql(mergedFile.numPages);
+      })
+      .finally(function () {
+        fs.unlinkSync(this.mergedFile);
       });
     });
 
@@ -141,17 +145,21 @@ describe('file library', function () {
 
       return Massage.merge(file1, file2)
       .then (function (mergedFile) {
+        this.mergedFile = mergedFile;
         return Bluebird.all([
           Massage.getMetaData(
             fs.createReadStream(__dirname + '/assets/4x6.pdf')),
           Massage.getMetaData(
             fs.createReadStream(__dirname + '/assets/4x6.pdf')),
-          Massage.getMetaData(mergedFile)
+          Massage.getMetaData(fs.createReadStream(mergedFile))
         ]);
       })
       .spread(function (file1, file2, mergedFile) {
         return expect(file1.numPages + file2.numPages)
           .to.eql(mergedFile.numPages);
+      })
+      .finally(function () {
+        fs.unlinkSync(this.mergedFile);
       });
     });
 
@@ -163,9 +171,14 @@ describe('file library', function () {
       var testFile = fs.readFileSync(filePath);
       return Massage.rotatePdf(testFile, 90)
       .then(function (data) {
-        return expect(Massage.getMetaData(data)).to.eventually.eql(
+        this.filePath = data;
+        return expect(Massage.getMetaData(fs.createReadStream(data)))
+          .to.eventually.eql(
           {fileType: 'PDF', width: 288, length: 432, numPages: 1}
         );
+      })
+      .finally(function () {
+        fs.unlinkSync(this.filePath);
       });
     });
 
@@ -174,9 +187,14 @@ describe('file library', function () {
       var testFile = fs.createReadStream(filePath);
       return Massage.rotatePdf(testFile, 90)
       .then(function (data) {
-        return expect(Massage.getMetaData(data)).to.eventually.eql(
+        this.filePath = data;
+        return expect(Massage.getMetaData(fs.createReadStream(data)))
+          .to.eventually.eql(
           {fileType: 'PDF', width: 288, length: 432, numPages: 1}
         );
+      })
+      .finally(function () {
+        fs.unlinkSync(this.filePath);
       });
     });
 

@@ -212,13 +212,12 @@ exports.merge = function (file1, file2) {
     return pexec(cmd);
   })
   .then(function () {
-    return fs.createReadStream(mergedFilePath);
+    return mergedFilePath;
   })
   .finally(function () {
     return Bluebird.all([
       punlink(file1Path),
-      punlink(file2Path),
-      punlink(mergedFilePath)
+      punlink(file2Path)
     ]);
   });
 };
@@ -246,12 +245,11 @@ exports.rotatePdf = function (file, degrees) {
     return pexec(cmd);
   })
   .then(function () {
-    return fs.createReadStream(outPath);
+    return outPath;
   })
   .finally(function () {
     return Bluebird.all([
-      punlink(filePath),
-      punlink(outPath)
+      punlink(filePath)
     ]);
   });
 };
