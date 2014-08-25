@@ -2,7 +2,7 @@ var chai    = require('chai');
 var expect  = chai.expect;
 var Massage = require('../massage');
 var fs      = require('fs');
-var Promise = require('bluebird');
+var Bluebird = require('bluebird');
 
 chai
 .use(require('chai-as-promised'))
@@ -123,7 +123,7 @@ describe('file library', function () {
 
       return Massage.merge(file1, file2)
       .then (function (mergedFile) {
-        return Promise.all([
+        return Bluebird.all([
           Massage.getMetaData(file1),
           Massage.getMetaData(file2),
           Massage.getMetaData(mergedFile)
@@ -141,7 +141,7 @@ describe('file library', function () {
 
       return Massage.merge(file1, file2)
       .then (function (mergedFile) {
-        return Promise.all([
+        return Bluebird.all([
           Massage.getMetaData(
             fs.createReadStream(__dirname + '/assets/4x6.pdf')),
           Massage.getMetaData(
@@ -232,6 +232,14 @@ describe('file library', function () {
           {fileType: 'PDF', width: 288, length: 432, numPages: 1}
        );
       });
+    });
+  });
+
+  describe('writeStreamToDisk', function () {
+    it('should return a file path from read stream', function () {
+      var readStream = fs.createReadStream(__dirname + '/assets/4x6.pdf');
+      return expect(Massage.writeStreamToDisk(readStream))
+        .to.eventually.be.a('string');
     });
   });
 });
