@@ -1,4 +1,4 @@
-var Promise     = require('bluebird');
+var Bluebird     = require('bluebird');
 var request     = require('request');
 var spawn       = require('child_process').spawn;
 var exec        = require('child_process').exec;
@@ -11,11 +11,11 @@ var _           = require('lodash');
 var uuid        = require('uuid');
 
 /* Promisify core API methods */
-var pwrite  = Promise.promisify(fs.writeFile);
-var punlink = Promise.promisify(fs.unlink);
-var pexec   = Promise.promisify(exec);
-var pglob   = Promise.promisify(glob);
-var preq    = Promise.promisify(request);
+var pwrite  = Bluebird.promisify(fs.writeFile);
+var punlink = Bluebird.promisify(fs.unlink);
+var pexec   = Bluebird.promisify(exec);
+var pglob   = Bluebird.promisify(glob);
+var preq    = Bluebird.promisify(request);
 
 var internals = {};
 
@@ -63,7 +63,7 @@ var getUUID = function () {
 */
 exports.getMetaData = function (file) {
   file = (file instanceof Buffer) ? Streamifier.createReadStream(file) : file;
-  return new Promise(function (resolve, reject) {
+  return new Bluebird(function (resolve, reject) {
     var identify   = spawn('identify',['-format','%m,%[fx:w],%[fx:h],%n,',
       '-']);
     identify.stdout.on('data', function (data) {
@@ -91,7 +91,7 @@ exports.getMetaData = function (file) {
 * Takes a string/buffer and checks if it is a valid URL
 * @param {String} url - url to validate
 */
-exports.validateUrl = Promise.method(function (url) {
+exports.validateUrl = Bluebird.method(function (url) {
   if (!url || (typeof url) !== 'string' || !Url.parse(url).protocol) {
     throw new InvalidFileUrl();
   } else {
@@ -103,7 +103,7 @@ exports.validateUrl = Promise.method(function (url) {
 * Takes either a buffer or request params
 * @param {Object} params - URL or buffer
 */
-exports.getBuffer = Promise.method(function (params) {
+exports.getBuffer = Bluebird.method(function (params) {
   if (params instanceof Buffer) {
     return params;
   }
@@ -166,10 +166,10 @@ exports.getStream = function (url) {
  * @author Peter Nagel
  * @param {Stream} stream stream to write
  * @param {String} filePath path to write file
- * @returns {Promise}
+ * @returns {Bluebird}
  */
 internals.writeStreamToPath = function (stream, filePath) {
-  return new Promise(function (resolve, reject) {
+  return new Bluebird(function (resolve, reject) {
     var writeStream = fs.createWriteStream(filePath);
 
     stream.on('close', function () {
@@ -200,7 +200,7 @@ exports.merge = function (file1, file2) {
   var file1Path      = '/tmp/merge_' + timestamp + '_in1';
   var file2Path      = '/tmp/merge_' + timestamp + '_in2';
   var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
-  return Promise.all([
+  return Bluebird.all([
     file1 instanceof Buffer ? pwrite(file1Path, file1) :
       internals.writeStreamToPath(file1, file1Path),
     file2 instanceof Buffer ? pwrite(file2Path, file2) :
@@ -215,7 +215,7 @@ exports.merge = function (file1, file2) {
     return fs.createReadStream(mergedFilePath);
   })
   .finally(function () {
-    return Promise.all([
+    return Bluebird.all([
       punlink(file1Path),
       punlink(file2Path),
       punlink(mergedFilePath)
@@ -230,13 +230,13 @@ exports.merge = function (file1, file2) {
 */
 exports.rotatePdf = function (file, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
-    return Promise.reject(new InvalidRotationDegrees());
+    return Bluebird.reject(new InvalidRotationDegrees());
   }
   var pdfHash  = getUUID() + sha1(file).slice(0, 10);
   var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
   var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
 
-  return Promise.resolve(
+  return Bluebird.resolve(
     file instanceof Buffer ? pwrite(filePath, file) :
       internals.writeStreamToPath(file, filePath)
   )
@@ -249,7 +249,7 @@ exports.rotatePdf = function (file, degrees) {
     return fs.createReadStream(outPath);
   })
   .finally(function () {
-    return Promise.all([
+    return Bluebird.all([
       punlink(filePath),
       punlink(outPath)
     ]);
@@ -264,7 +264,7 @@ exports.rotatePdf = function (file, degrees) {
   */
 exports.burstPdf = function (file) {
   var filePath = '/tmp/burst_' + getUUID().slice(0, 10);
-  return Promise.resolve(
+  return Bluebird.resolve(
     file instanceof Buffer ? pwrite(filePath, file) :
       internals.writeStreamToPath(file, filePath)
   )
@@ -291,7 +291,7 @@ exports.burstPdf = function (file) {
     };
   })
   .finally(function () {
-    return Promise.resolve(this.outFiles)
+    return Bluebird.resolve(this.outFiles)
     .each(function (filename) {
       return punlink(filename);
     });
@@ -311,7 +311,7 @@ exports.imageToPdf = function (image, dpi) {
     exports.getMetaData(image).fileType;
   var outPath = '/tmp/' + imageHash + '.pdf';
 
-  return Promise.resolve(
+  return Bluebird.resolve(
     image instanceof Buffer ? pwrite(filePath, image) :
       internals.writeStreamToPath(image, filePath)
   )
@@ -325,9 +325,38 @@ exports.imageToPdf = function (image, dpi) {
     return fs.createReadStream(outPath);
   })
   .finally(function () {
-    return Promise.all([
+    return Bluebird.all([
       punlink(outPath),
       punlink(filePath)
     ]);
+  });
+};
+
+/**
+  * @author Peter Nagel
+  * @param {Stream} stream
+  * @returns {String} path to file
+*/
+exports.writeStreamToFile = function (stream) {
+  return new Bluebird(function (resolve, reject) {
+    var tempPath = '/tmp/' + sha1(uuid.v4().toString()).slice(0, 15);
+
+    var writeStream = fs.createWriteStream(tempPath);
+
+    stream.on('end', function () {
+          return resolve(tempPath);
+        });
+
+    /* istanbul ignore next */
+    writeStream.on('error', function (err) {
+          return reject(err);
+        });
+
+    /* istanbul ignore next */
+    stream.on('error', function (err) {
+          return reject(err);
+        });
+
+    stream.pipe(writeStream);
   });
 };
