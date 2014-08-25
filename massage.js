@@ -337,7 +337,7 @@ exports.imageToPdf = function (image, dpi) {
   * @param {Stream} stream
   * @returns {String} path to file
 */
-exports.writeStreamToDisk = function (stream) {
+exports.writeStreamToFile = function (stream) {
   return new Bluebird(function (resolve, reject) {
     var tempPath = '/tmp/' + sha1(uuid.v4().toString()).slice(0, 15);
 

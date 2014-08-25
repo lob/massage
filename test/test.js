@@ -235,10 +235,10 @@ describe('file library', function () {
     });
   });
 
-  describe('writeStreamToDisk', function () {
+  describe('writeStreamToFile', function () {
     it('should return a file path from read stream', function () {
       var readStream = fs.createReadStream(__dirname + '/assets/4x6.pdf');
-      return expect(Massage.writeStreamToDisk(readStream))
+      return expect(Massage.writeStreamToFile(readStream))
         .to.eventually.be.a('string');
     });
   });
