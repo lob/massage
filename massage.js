@@ -322,8 +322,7 @@ exports.burstPdf = function (file) {
   */
 exports.imageToPdf = function (image, dpi) {
   var imageHash = getUUID() + sha1(image).toString().slice(0, 10);
-  var filePath = '/tmp/' + imageHash + '.' +
-    exports.getMetaData(image).fileType;
+  var filePath = '/tmp/' + imageHash + '.in';
   var outPath = '/tmp/' + imageHash + '.pdf';
 
   return Bluebird.resolve(
@@ -337,7 +336,7 @@ exports.imageToPdf = function (image, dpi) {
     return pexec(cmd);
   })
   .then(function () {
-    return fs.createReadStream(outPath);
+    return Streamifier.createReadStream(fs.readFileSync(outPath));
   })
   .finally(function () {
     return Bluebird.all([
