@@ -66,7 +66,7 @@ var getUUID = function () {
   * @returns {Number} dpi
   */
 exports.calculateDpi = function (inWidth, inLength, outWidth, outLength) {
-  if (inWidth/inLength === outWidth/outLength) {
+  if (inWidth / inLength === outWidth / outLength) {
     return inLength / outLength;
   } else {
     return inWidth / outLength;
