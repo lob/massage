@@ -340,8 +340,8 @@ exports.imageToPdf = function (image, dpi) {
   })
   .finally(function () {
     return Bluebird.all([
-      punlink(outPath),
-      punlink(filePath)
+      fs.existsSync(outPath) ? punlink(outPath) : false,
+      fs.existsSync(filePath) ? punlink(filePath) : false
     ]);
   });
 };
