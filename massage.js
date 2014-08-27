@@ -57,6 +57,23 @@ var getUUID = function () {
 };
 
 /**
+  * Given an input W/L, figure out the DPI needed to convert to the out W/L
+  * @author Peter Nagel
+  * @param {Number} inWidth - input width, in pixels or points
+  * @param {Number} inLength - input length, in pixels or points
+  * @param {Number} outWidth - output width, in inches
+  * @param {Number} outLength - output length, in inches
+  * @returns {Number} dpi
+  */
+exports.calculateDpi = function (inWidth, inLength, outWidth, outLength) {
+  if (inWidth/inLength === outWidth/outLength) {
+    return inLength / outLength;
+  } else {
+    return inWidth / outLength;
+  }
+};
+
+/**
 * Takes a buffer and returns the relevant metadata
 * @author Peter Nagel
 * @param {Stream/Buffer} file - readable file stream or buffer

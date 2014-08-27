@@ -9,6 +9,17 @@ chai
 .use(require('chai-things'));
 
 describe('file library', function () {
+
+  describe('calculateDpi', function () {
+    it('should correctly convert the DPI', function () {
+      return expect(Massage.calculateDpi(1200, 1800, 4, 6)).to.eql(300);
+    });
+
+    it('should correctly convert the DPI, for flipped', function () {
+      return expect(Massage.calculateDpi(1800, 1200, 4, 6)).to.eql(300);
+    });
+  });
+
   describe('getMetaData', function () {
     it('should be able to handle a buffer', function () {
       var filePath = __dirname + '/assets/4x6.pdf';
