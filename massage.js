@@ -267,7 +267,7 @@ exports.rotatePdf = function (file, degrees) {
     return pexec(cmd);
   })
   .then(function () {
-    return outPath;
+    return Streamifier.createReadStream(fs.readFileSync(outPath));
   })
   .finally(function () {
     return Bluebird.all([
