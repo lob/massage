@@ -234,12 +234,13 @@ exports.merge = function (file1, file2) {
     return pexec(cmd);
   })
   .then(function () {
-    return mergedFilePath;
+    return Streamifier.createReadStream(fs.readFileSync(mergedFilePath));
   })
   .finally(function () {
     return Bluebird.all([
       punlink(file1Path),
-      punlink(file2Path)
+      punlink(file2Path),
+      punlink(mergedFilePath)
     ]);
   });
 };
@@ -271,7 +272,8 @@ exports.rotatePdf = function (file, degrees) {
   })
   .finally(function () {
     return Bluebird.all([
-      punlink(filePath)
+      punlink(filePath),
+      punlink(outPath)
     ]);
   });
 };
@@ -311,6 +313,10 @@ exports.burstPdf = function (file) {
     };
   })
   .finally(function () {
+    /* istanbul ignore next */
+    if (fs.existsSync('/tmp/doc_data.txt')) {
+      fs.unlinkSync('/tmp/doc_data.txt');
+    }
     return Bluebird.resolve(this.outFiles)
     .each(function (filename) {
       return punlink(filename);
@@ -344,10 +350,15 @@ exports.imageToPdf = function (image, dpi) {
     return Streamifier.createReadStream(fs.readFileSync(outPath));
   })
   .finally(function () {
-    return Bluebird.all([
-      fs.existsSync(outPath) ? punlink(outPath) : false,
-      fs.existsSync(filePath) ? punlink(filePath) : false
-    ]);
+    /* istanbul ignore next */
+    if (fs.existsSync(outPath)) {
+      fs.unlinkSync(outPath);
+    }
+
+   /* istanbul ignore next */
+   if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
   });
 };
 
