@@ -9,6 +9,7 @@ var sha1        = require('sha1');
 var glob        = require('glob');
 var _           = require('lodash');
 var uuid        = require('uuid');
+var stream      = require('stream');
 
 /* Promisify core API methods */
 var pwrite  = Bluebird.promisify(fs.writeFile);
@@ -170,7 +171,8 @@ exports.getStream = function (url) {
     if (res[0].statusCode !== 200) {
       throw new InvalidFileUrl();
     } else {
-      return request(url);
+      return request(url)
+      .pipe(stream.PassThrough());
     }
   })
   .catch(function () {
