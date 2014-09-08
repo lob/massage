@@ -1,6 +1,6 @@
 {
   "name": "massage",
-  "version": "0.10.6",
+  "version": "0.10.7",
   "description": "functions to help you interact with files",
   "main": "./massage.js",
   "scripts": {
