@@ -168,6 +168,16 @@ exports.getStream = function (url) {
     url: url
   })
   .then(function (res) {
+    if (res[0].statusCode === 403) {
+      return preq({
+        method: 'GET',
+        url: url
+      });
+    } else {
+      return res;
+    }
+  })
+  .then(function (res) {
     if (res[0].statusCode !== 200) {
       throw new InvalidFileUrl();
     } else {
