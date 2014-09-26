@@ -168,7 +168,7 @@ exports.getStream = function (url) {
     url: url
   })
   .then(function (res) {
-    if (res[0].statusCode === 403) {
+    if (res[0].statusCode === 403 || res[0].statusCode === 405) {
       return preq({
         method: 'GET',
         url: url
