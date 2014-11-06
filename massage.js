@@ -258,6 +258,29 @@ exports.merge = function (file1, file2) {
 };
 
 /**
+  * Combine two files into a single a file
+  * @param {Buffer/Stream} file1 - first file to combine
+  * @param {Buffer/Stream} file2 - second file to combine
+  */
+exports.mergeFilePaths = function (filePath1, filePath2) {
+  var timestamp      = getUUID().slice(0, 10);
+  var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
+  var cmd            = 'pdftk ' + filePath1 + ' ' + filePath2 +
+    ' cat output ' + mergedFilePath;
+
+  return pexec(cmd)
+  .then(function () {
+    return Streamifier.createReadStream(fs.readFileSync(mergedFilePath));
+  })
+  .finally(function () {
+    /* istanbul ignore next */
+    return (mergedFilePath && fs.existsSync(mergedFilePath)) ?
+      punlink(mergedFilePath) : false;
+  });
+};
+
+
+/**
 * Takes a PDF buffer, rotates it clockwise and returns as stream
 * @param {Buffer/Stream} file - PDF file buffer or stream
 * @param {number} degrees - degrees to rotate PDF
