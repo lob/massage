@@ -259,8 +259,8 @@ exports.merge = function (file1, file2) {
 
 /**
   * Combine two files into a single a file
-  * @param {Buffer/Stream} file1 - first file to combine
-  * @param {Buffer/Stream} file2 - second file to combine
+  * @param {String} filePath1 - first file to combine
+  * @param {String} filePath2 - second file to combine
   */
 exports.mergeFilePaths = function (filePath1, filePath2) {
   var timestamp      = getUUID().slice(0, 10);
@@ -278,7 +278,6 @@ exports.mergeFilePaths = function (filePath1, filePath2) {
       punlink(mergedFilePath) : false;
   });
 };
-
 
 /**
 * Takes a PDF buffer, rotates it clockwise and returns as stream
