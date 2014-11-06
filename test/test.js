@@ -122,7 +122,7 @@ describe('file library', function () {
     });
 
     it('should throw an error when not authorized', function () {
-      return expect(Massage.getStream('https://api.lob.com/'))
+      return expect(Massage.getStream('http://assets.lob.com/asdf'))
         .to.be.rejected;
     });
   });
@@ -167,7 +167,22 @@ describe('file library', function () {
           .to.eql(mergedFile.numPages);
       });
     });
+  });
 
+  describe('mergeFilePaths', function () {
+    it('should combine two files from file paths', function () {
+      var file1 = __dirname + '/assets/4x6.pdf';
+      var file2 = __dirname + '/assets/4x6.pdf';
+
+      return Massage.mergeFilePaths(file1, file2)
+      .then (function (mergedFile) {
+        this.mergedFile = mergedFile;
+        return Massage.getMetaData(mergedFile);
+      })
+      .then(function (mergedFile) {
+        return expect(mergedFile.numPages).to.eql(2);
+      });
+    });
   });
 
   describe('rotatePdf', function () {
