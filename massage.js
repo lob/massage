@@ -1,14 +1,13 @@
-var Bluebird     = require('bluebird');
+var Bluebird    = require('bluebird');
 var request     = require('request');
 var spawn       = require('child_process').spawn;
 var exec        = require('child_process').exec;
 var Streamifier = require('streamifier');
 var Url         = require('url');
 var fs          = require('fs');
-var sha1        = require('sha1');
 var glob        = require('glob');
 var _           = require('lodash');
-var uuid        = require('uuid');
+var temp        = require('temp').track();
 var stream      = require('stream');
 
 /* Promisify core API methods */
@@ -48,13 +47,6 @@ exports.Errors = {
   invalidFileUrl: InvalidFileUrl,
   invalidPdfFile: InvalidPdfFile,
   invalidRotationDegrees: InvalidRotationDegrees
-};
-
-/** Return a 16-character unique identifier.
- * @author - Grayson Chao
- */
-var getUUID = function () {
-  return sha1(uuid.v4().toString()).slice(0, 15);
 };
 
 /**
@@ -230,10 +222,9 @@ internals.writeStreamToPath = function (stream, filePath) {
 * @param {Buffer/Stream} file2 - second file to combine
 */
 exports.merge = function (file1, file2) {
-  var timestamp      = getUUID().slice(0, 10);
-  var file1Path      = '/tmp/merge_' + timestamp + '_in1';
-  var file2Path      = '/tmp/merge_' + timestamp + '_in2';
-  var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
+  var file1Path      = temp.path({prefix: 'merge', suffix: '.pdf'});
+  var file2Path      = temp.path({prefix: 'merge', suffix: '.pdf'});
+  var mergedFilePath = temp.path({prefix: 'merge', suffix: '.pdf'});
   return Bluebird.all([
     file1 instanceof Buffer ? pwrite(file1Path, file1) :
       internals.writeStreamToPath(file1, file1Path),
@@ -263,8 +254,7 @@ exports.merge = function (file1, file2) {
   * @param {String} filePath2 - second file to combine
   */
 exports.mergeFilePaths = function (filePath1, filePath2) {
-  var timestamp      = getUUID().slice(0, 10);
-  var mergedFilePath = '/tmp/merge_' + timestamp + '_out';
+  var mergedFilePath = temp.path({prefix: 'merge', suffix: '.pdf'});
   var cmd            = 'pdftk ' + filePath1 + ' ' + filePath2 +
     ' cat output ' + mergedFilePath;
 
@@ -288,9 +278,8 @@ exports.rotatePdf = function (file, degrees) {
   if (degrees !== 90 && degrees !== 180 && degrees !== 270) {
     return Bluebird.reject(new InvalidRotationDegrees());
   }
-  var pdfHash  = getUUID() + sha1(file).slice(0, 10);
-  var filePath = '/tmp/rotate_' + pdfHash + '_in.pdf';
-  var outPath  = '/tmp/rotate_' + pdfHash + '_out.pdf';
+  var filePath = temp.path({prefix: 'rotate', suffix: '.pdf'});
+  var outPath  = temp.path({prefix: 'rotate', suffix: '.pdf'});
 
   return Bluebird.resolve(
     file instanceof Buffer ? pwrite(filePath, file) :
@@ -319,7 +308,7 @@ exports.rotatePdf = function (file, degrees) {
   * @param {Buffer/Stream} file PDF file buffer or stream
   */
 exports.burstPdf = function (file) {
-  var filePath = '/tmp/burst_' + getUUID().slice(0, 10);
+  var filePath = temp.path({prefix: 'burst', suffix: '.pdf'});
   return Bluebird.resolve(
     file instanceof Buffer ? pwrite(filePath, file) :
       internals.writeStreamToPath(file, filePath)
@@ -366,9 +355,8 @@ exports.burstPdf = function (file) {
   * @param {Number} dpi - Desired DPI for the result PDF.
   */
 exports.imageToPdf = function (image, dpi) {
-  var imageHash = getUUID() + sha1(image).toString().slice(0, 10);
-  var filePath = '/tmp/' + imageHash + '.in';
-  var outPath = '/tmp/' + imageHash + '.pdf';
+  var filePath = temp.path({prefix: 'convert'});
+  var outPath  = temp.path({prefix: 'convert', suffix: '.pdf'});
 
   return Bluebird.resolve(
     image instanceof Buffer ? pwrite(filePath, image) :
@@ -403,7 +391,7 @@ exports.imageToPdf = function (image, dpi) {
 */
 exports.writeStreamToFile = function (stream) {
   return new Bluebird(function (resolve, reject) {
-    var tempPath = '/tmp/' + sha1(uuid.v4().toString()).slice(0, 15);
+    var tempPath = temp.path({prefix: 'stream'});
 
     var writeStream = fs.createWriteStream(tempPath);
 
